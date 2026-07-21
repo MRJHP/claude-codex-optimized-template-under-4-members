@@ -25,3 +25,14 @@ uv run mypy .                 # 타입 체크 (strict 모드)
 
 세 명령이 모두 통과하지 않으면 커밋하지 않는다. 실패 시 원인을 분석하고, 반복해서 막히면
 [codex-delegation.md](codex-delegation.md) 기준에 따라 Codex 상담을 고려한다.
+
+## pre-commit
+
+`.pre-commit-config.yaml`에 ruff check/format, mypy가 로컬 hook으로 등록되어 있다. 최초 1회 설치한다:
+
+```bash
+uv run pre-commit install
+```
+
+이후 `git commit` 시 자동으로 실행된다. pytest는 속도 문제로 pre-commit에 포함하지 않고 CI
+(`.github/workflows/ci.yml`)에서 실행한다.

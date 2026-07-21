@@ -50,3 +50,14 @@ Claude가 상황을 보고 스스로 판단합니다.
 
 `.codex/AGENTS.md`는 Codex CLI용 컨텍스트 문서이며, `.codex/skills/context-loader/`는
 Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게 로드하도록 안내합니다.
+
+## 품질 게이트
+
+- **CI**: `.github/workflows/ci.yml`이 push/PR마다 `ruff check`, `ruff format --check`를 실행하고,
+  `src/`, `tests/`가 존재하면 `mypy`, `pytest`도 실행합니다 (템플릿 상태에서는 자동으로 건너뜁니다).
+- **pre-commit**: `.pre-commit-config.yaml`에 ruff check/format, mypy가 로컬 hook으로 등록되어 있습니다.
+  `uv run pre-commit install`로 최초 1회 활성화합니다 ([dev-environment.md](.claude/rules/dev-environment.md)).
+- **에디터**: `.vscode/settings.json`, `.vscode/extensions.json`으로 ruff/mypy 확장 및 저장 시 자동 포맷을
+  구성해 두었습니다.
+- **라이선스/환경변수**: `LICENSE`(MIT, 필요 없으면 삭제), `.env.example`(`.env`로 복사해서 사용, 실제 값은
+  절대 커밋하지 않음 — [security.md](.claude/rules/security.md)).
