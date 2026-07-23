@@ -3,6 +3,15 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-07-23 (4차 검토 — sandbox/)
+
+- **`sandbox/`를 ruff/mypy 검사 대상에서 제외**: `sandbox/`는 `.gitignore` 처리된 로컬 전용 스크래치
+  공간(Codex CLI 동작 확인용)인데, `pyproject.toml`에 제외 설정이 없어 `uv run ruff check .`,
+  `uv run mypy .`(dev-environment.md의 커밋 전 체크리스트)가 그 안의 실험용 코드까지 검사했다. 커밋할
+  생각이 없는 코드 품질 때문에 정작 커밋하려는 변경의 체크리스트가 막힐 수 있어, `[tool.ruff]`에
+  `extend-exclude = ["sandbox"]`, `[tool.mypy]`에 `exclude = ["^sandbox/"]`를 추가했다. Codex와 상의해
+  "의도된 설계가 아니라 결함"이라는 결론을 확인한 뒤 반영했다.
+
 ## 2026-07-23 (3차 검토)
 
 Codex와 반복 교차 검토(총 3라운드)로 아래 항목을 발견해 수정했다. 마지막 라운드에서 Codex가
