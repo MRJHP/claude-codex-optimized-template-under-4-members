@@ -11,8 +11,9 @@ description: 이 템플릿을 새 프로젝트로 초기화한다 (uv 프로젝�
 
 1. **README.md 생성**: `pyproject.toml`이 `readme = "README.md"`를 참조하므로 없으면 `uv sync`가 실패한다.
    최소한 프로젝트 한 줄 설명이라도 채운 `README.md`를 만든다.
-2. **디렉토리 구조 확인/생성**: `src/<package_name>/`, `tests/`가 없으면 만든다. `pyproject.toml`의
-   `[project].name`을 실제 프로젝트 이름으로 바꾼다.
+2. **예제 코드 교체**: 템플릿에는 `uv run pytest`가 바로 동작하도록 최소 예제(`src/project/__init__.py`의
+   `greet` 함수, `tests/test_project.py`)가 포함되어 있다. 이 예제를 실제 패키지 이름(`src/<package_name>/`)과
+   실제 코드/테스트로 교체하거나 삭제한다. `pyproject.toml`의 `[project].name`도 실제 프로젝트 이름으로 바꾼다.
 3. **의존성 초기화**
    ```bash
    uv sync
@@ -32,7 +33,7 @@ description: 이 템플릿을 새 프로젝트로 초기화한다 (uv 프로젝�
 - [ ] README.md 생성 후 `uv sync` 성공
 - [ ] `pre-commit install` 완료
 - [ ] `pyproject.toml`의 프로젝트명/설명 갱신
-- [ ] `src/`, `tests/` 구조 존재
+- [ ] `src/project`, `tests/test_project.py` 예제를 실제 패키지/테스트로 교체 (남아있지 않은지 확인)
 - [ ] CLAUDE.md, `.codex/AGENTS.md`에 실제 프로젝트 설명 반영
 - [ ] `LICENSE`의 저작권자/연도가 실제 프로젝트에 맞는지 확인 (필요 없으면 삭제)
 - [ ] `.env.example`에 실제로 필요한 키를 채움 (실제 `.env`는 커밋 금지, [security.md](../../rules/security.md))

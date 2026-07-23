@@ -10,7 +10,6 @@
       "source.organizeImports.ruff": "explicit"
     }
   },
-  "mypy-type-checker.args": ["--strict"],
   "files.exclude": {
     "**/__pycache__": true,
     "**/.mypy_cache": true,

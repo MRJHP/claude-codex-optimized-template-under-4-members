@@ -5,11 +5,20 @@ pytest 실행 결과가 실패로 보이면 Codex 원인 분석을 '제안'한�
 """
 
 import json
+import re
 import sys
 
 from _hooklog import log_event
 
-FAILURE_MARKERS = ("FAILED", "ERROR", "failed", "Traceback (most recent call last)")
+# 줄 시작 기준으로 매칭해 테스트 이름/로그 문구에 "failed"가 우연히 포함된 경우의 오탐을 줄인다
+# (예: test_login_failed_when_wrong_password).
+FAILURE_PATTERNS = (
+    re.compile(r"^FAILED\s", re.MULTILINE),
+    re.compile(r"^ERROR\s", re.MULTILINE),
+    re.compile(r"^E\s", re.MULTILINE),
+    re.compile(r"\b\d+ failed\b"),
+    re.compile(r"Traceback \(most recent call last\)"),
+)
 
 
 def main() -> None:
@@ -26,7 +35,7 @@ def main() -> None:
     tool_response = data.get("tool_response", {}) or {}
     output = str(tool_response.get("stdout", "")) + str(tool_response.get("stderr", ""))
 
-    if not any(marker in output for marker in FAILURE_MARKERS):
+    if not any(pattern.search(output) for pattern in FAILURE_PATTERNS):
         log_event("post-test-analysis", "PostToolUse", triggered=False)
         sys.exit(0)
 

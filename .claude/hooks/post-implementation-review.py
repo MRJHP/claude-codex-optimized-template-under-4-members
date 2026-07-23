@@ -8,19 +8,7 @@ import json
 import sys
 
 from _hooklog import log_event
-
-RISK_PATH_KEYWORDS = (
-    "auth",
-    "login",
-    "payment",
-    "billing",
-    "security",
-    "migration",
-    "schema",
-    "crypto",
-    "secret",
-    "permission",
-)
+from _risk_keywords import RISK_PATH_KEYWORDS
 
 
 def main() -> None:

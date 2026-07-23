@@ -3,6 +3,25 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-07-23 (2차 검토)
+
+- **CI 조건부 스킵 제거**: `src/`, `tests/`에 항상 최소 예제가 존재하게 되어(1차 검토에서 추가) `mypy`/`pytest`를
+  `hashFiles`로 건너뛰던 조건이 항상 참이 되었다. 조건을 제거해 무조건 실행하도록 바꿨다 — 초기화 중 실수로
+  예제를 통째로 지워도 CI가 조용히 "건너뛰기"로 통과하는 fail-open을 막기 위함. `CLAUDE.md`의 관련 설명도
+  갱신했다.
+- **`/init` 체크리스트에 예제 교체 안내 추가**: `src/project/__init__.py`, `tests/test_project.py` 예제를
+  실제 프로젝트로 초기화할 때 교체/삭제하라는 항목이 빠져 있어 추가했다.
+- **훅 중복 제거**: `check-codex-before-write.py`와 `post-implementation-review.py`에 토씨 하나 같은
+  `RISK_PATH_KEYWORDS` 튜플이 중복돼 있어 `.claude/hooks/_risk_keywords.py` 공유 모듈로 뽑아냈다.
+- **`post-test-analysis.py` 오탐 완화**: `"failed"`, `"ERROR"` 부분 문자열 매칭이 `test_login_failed_...`
+  같은 테스트 이름에도 우연히 매칭될 수 있어, 줄 시작 기준 정규식(`^FAILED `, `^ERROR `, `^E `, `\d+ failed`)으로
+  바꿨다.
+- **`.vscode/settings.json` 중복 설정 제거**: `mypy-type-checker.args: ["--strict"]`가 `pyproject.toml`의
+  `[tool.mypy] strict = true`와 중복이라 제거했다. mypy 확장은 워크스페이스의 `pyproject.toml` 설정을 그대로
+  사용한다.
+
+Codex와 구조를 재검토해 위 항목들을 발견했다.
+
 ## 2026-07-23
 
 - **Codex 컨텍스트 로드 경로 버그 수정**: `.codex/AGENTS.md`와 `.codex/skills/context-loader/SKILL.md`가

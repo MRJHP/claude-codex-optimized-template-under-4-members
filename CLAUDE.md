@@ -57,8 +57,9 @@ Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게 로드하도
 
 ## 품질 게이트
 
-- **CI**: `.github/workflows/ci.yml`이 push/PR마다 `ruff check`, `ruff format --check`를 실행하고,
-  `src/`, `tests/`가 존재하면 `mypy`, `pytest`도 실행합니다 (템플릿 상태에서는 자동으로 건너뜁니다).
+- **CI**: `.github/workflows/ci.yml`이 push/PR마다 `ruff check`, `ruff format --check`, `mypy`, `pytest`를
+  실행합니다. `src/`, `tests/`에는 최소 예제(`src/project`, `tests/test_project.py`)가 포함되어 있어 항상
+  통과하며, `/init` 스킬로 실제 프로젝트로 바꿀 때 이 예제를 실제 코드로 교체합니다.
 - **pre-commit**: `.pre-commit-config.yaml`에 ruff check/format, mypy가 로컬 hook으로 등록되어 있습니다.
   `uv run pre-commit install`로 최초 1회 활성화합니다 ([dev-environment.md](.claude/rules/dev-environment.md)).
 - **에디터**: `.vscode/settings.json`, `.vscode/extensions.json`으로 ruff/mypy 확장 및 저장 시 자동 포맷을
