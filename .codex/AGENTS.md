@@ -7,7 +7,7 @@
 세션을 시작할 때 아래 순서로 컨텍스트를 로드한다 (자세한 절차는
 [skills/context-loader/SKILL.md](skills/context-loader/SKILL.md) 참고):
 
-1. `.claude/CLAUDE.md` — 프로젝트 개요, 협업 구조
+1. `CLAUDE.md` (저장소 루트) — 프로젝트 개요, 협업 구조
 2. `.claude/rules/*.md` — 언어, Codex 위임 기준, 코딩 원칙, 개발 환경, 보안, 테스트 규칙
 3. `.claude/docs/DESIGN.md` — 아키텍처 결정 기록
 

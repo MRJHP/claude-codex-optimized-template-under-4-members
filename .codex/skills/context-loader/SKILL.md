@@ -10,7 +10,7 @@ Claude Code와 Codex CLI가 서로 다른 규칙을 적용하면 리뷰/구현�
 
 ## 로드 순서
 
-1. `.claude/CLAUDE.md` — 전체 협업 구조와 규칙 목록 인덱스
+1. `CLAUDE.md` (저장소 루트) — 전체 협업 구조와 규칙 목록 인덱스
 2. `.claude/rules/language.md` — 응답 언어(한국어) 및 용어 규칙
 3. `.claude/rules/codex-delegation.md` — Codex 자신이 언제/어떻게 호출되는지에 대한 기준
 4. `.claude/rules/coding-principles.md` — 리뷰 시 적용할 코드 품질 기준
