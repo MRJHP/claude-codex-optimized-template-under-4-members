@@ -7,6 +7,8 @@ pytest 실행 결과가 실패로 보이면 Codex 원인 분석을 '제안'한�
 import json
 import sys
 
+from _hooklog import log_event
+
 FAILURE_MARKERS = ("FAILED", "ERROR", "failed", "Traceback (most recent call last)")
 
 
@@ -25,8 +27,10 @@ def main() -> None:
     output = str(tool_response.get("stdout", "")) + str(tool_response.get("stderr", ""))
 
     if not any(marker in output for marker in FAILURE_MARKERS):
+        log_event("post-test-analysis", "PostToolUse", triggered=False)
         sys.exit(0)
 
+    log_event("post-test-analysis", "PostToolUse", triggered=True)
     suggestion = (
         "[post-test-analysis] pytest 실행이 실패한 것으로 보입니다. "
         "같은 실패를 2회 이상 반복해서 해결하지 못했다면 mcp__codex__codex로 "

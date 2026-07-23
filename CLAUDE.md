@@ -27,6 +27,8 @@
 - [.claude/docs/DESIGN.md](.claude/docs/DESIGN.md) — 설계 문서 (변경 시 자동 업데이트 대상)
 - `.claude/docs/research/` — Claude WebSearch로 조사한 주제별 리서치 결과
 - `.claude/docs/libraries/` — 사용 중인 라이브러리 문서 요약
+- [CHANGELOG.md](CHANGELOG.md) — 작업 이력 로그 (날짜별로 무엇을 왜 바꿨는지 기록)
+- `.claude/logs/hooks.jsonl` — hook 실행 로그 (커밋 대상 아님, 로컬 디버깅용)
 
 ## 자동 협업 Hook
 

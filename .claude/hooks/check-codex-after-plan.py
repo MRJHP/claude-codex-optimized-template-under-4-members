@@ -8,6 +8,8 @@
 import json
 import sys
 
+from _hooklog import log_event
+
 RISK_KEYWORDS = (
     "migration",
     "schema",
@@ -32,8 +34,12 @@ def main() -> None:
 
     triggered = len(plan_text) > 1500 or any(k in plan_text.lower() for k in RISK_KEYWORDS)
     if not triggered:
+        log_event("check-codex-after-plan", "PreToolUse", triggered=False)
         sys.exit(0)
 
+    log_event(
+        "check-codex-after-plan", "PreToolUse", triggered=True, detail=f"plan_len={len(plan_text)}"
+    )
     reason = (
         "[check-codex-after-plan] 계획이 크거나 되돌리기 어려운 변경을 포함하는 것으로 보입니다. "
         "실행에 들어가기 전에 mcp__codex__codex로 Codex에게 계획 리뷰를 받아볼 것을 제안합니다 "

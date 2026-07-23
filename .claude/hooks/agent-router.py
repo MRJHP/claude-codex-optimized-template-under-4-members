@@ -8,6 +8,8 @@
 import json
 import sys
 
+from _hooklog import log_event
+
 SKILL_HINTS = [
     (("새 프로젝트", "프로젝트 시작", "새로 시작"), "startproject"),
     (("계획", "구현 계획", "plan"), "plan"),
@@ -30,13 +32,16 @@ def main() -> None:
     matched = [skill for keywords, skill in SKILL_HINTS if any(k in prompt for k in keywords)]
 
     if not matched:
+        log_event("agent-router", "UserPromptSubmit", triggered=False)
         sys.exit(0)
 
+    matched_skills = ", ".join(dict.fromkeys(matched))
     suggestion = (
         "[agent-router] 이 요청과 관련될 수 있는 스킬: "
-        + ", ".join(dict.fromkeys(matched))
+        + matched_skills
         + ". 상황에 맞으면 참고하되, 적합하지 않으면 무시해도 됩니다."
     )
+    log_event("agent-router", "UserPromptSubmit", triggered=True, detail=matched_skills)
     print(
         json.dumps(
             {

@@ -8,6 +8,8 @@
 import json
 import sys
 
+from _hooklog import log_event
+
 RISK_PATH_KEYWORDS = (
     "auth",
     "login",
@@ -40,8 +42,10 @@ def main() -> None:
     content = str(tool_input.get("content", "") or tool_input.get("new_string", ""))
 
     if not file_path or not is_risky(file_path, content):
+        log_event("check-codex-before-write", "PreToolUse", triggered=False, detail=file_path)
         sys.exit(0)
 
+    log_event("check-codex-before-write", "PreToolUse", triggered=True, detail=file_path)
     reason = (
         f"[check-codex-before-write] '{file_path}'은(는) 민감하거나 규모가 큰 변경으로 보입니다. "
         "구현 전에 mcp__codex__codex로 Codex에게 접근 방식을 상담해볼 것을 제안합니다 "
