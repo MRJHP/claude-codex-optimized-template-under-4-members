@@ -13,7 +13,7 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
   Codex 세션 이어가기). 별도 CLI 셸아웃이 아니라 Claude가 도구 호출로 직접 부른다.
 - `.claude/agents/general-purpose.md` 서브에이전트는 이 두 도구에 접근 권한을 가지고 있어, 조사 작업 중에도
   필요하면 Codex를 호출할 수 있다.
-- `.codex/AGENTS.md`는 Codex 쪽에서 보는 프로젝트 컨텍스트 문서다. `.claude/CLAUDE.md`와 짝을 이룬다.
+- `.codex/AGENTS.md`는 Codex 쪽에서 보는 프로젝트 컨텍스트 문서다. 저장소 루트 `CLAUDE.md`와 짝을 이룬다.
 - `.codex/skills/context-loader/`는 Codex가 `.claude/rules/`, `.claude/docs/DESIGN.md`를 함께 참고하도록
   안내해서, Claude와 Codex가 같은 규칙 아래에서 작업하게 한다.
 

@@ -45,7 +45,8 @@ Claude가 상황을 보고 스스로 판단합니다.
 
 ## 스킬
 
-`.claude/skills/`에 13개(스킬 12개 + Codex 연계 문서 스킬 1개) 스킬이 정의되어 있습니다.
+이 프로젝트에는 스킬이 총 13개 있습니다 (`.claude/skills/` 아래 12개 + `.codex/skills/` 아래
+Codex 연계 문서 스킬 1개).
 자세한 목록은 [.claude/skills/codex-system/SKILL.md](.claude/skills/codex-system/SKILL.md)를 참고하세요.
 [harness-lab](.claude/skills/harness-lab/SKILL.md)은 코딩 외 반복 업무(리포트·체크리스트·문서 산출물)를
 Agent/Skill/Orchestrator/Test/Evolution 구조로 만드는 별도 스킬로, 기존 코딩 규칙과 별개로 동작합니다.

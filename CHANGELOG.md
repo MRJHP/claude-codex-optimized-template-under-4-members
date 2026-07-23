@@ -3,6 +3,28 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-07-23 (3차 검토)
+
+Codex와 반복 교차 검토(총 3라운드)로 아래 항목을 발견해 수정했다. 마지막 라운드에서 Codex가
+"추가 문제 없음"으로 확인해 종료했다.
+
+- **`codex-system/SKILL.md`의 남은 경로 버그**: 1차 검토에서 `.codex/AGENTS.md`, `context-loader/SKILL.md`만
+  고치고 놓쳤던 동일한 `.claude/CLAUDE.md` → 루트 `CLAUDE.md` 참조를 마저 수정했다.
+- **`update-design/SKILL.md`**: 아카이브 예시 경로 `docs/DESIGN_ARCHIVE.md`를 실제 설계 문서 위치에 맞게
+  `.claude/docs/DESIGN_ARCHIVE.md`로 수정했다.
+- **`startproject/SKILL.md`**: init 스킬을 "uv init으로 새로 스캐폴딩"한다고 잘못 설명하던 것을, 실제 동작인
+  "기존 템플릿을 실제 프로젝트로 커스터마이즈"로 바로잡았다.
+- **`init/SKILL.md`, `tdd/SKILL.md` 커밋 전 명령 누락 보완**: `dev-environment.md` 기준의 `uv run ruff format .`
+  단계가 두 스킬 문서에서 빠져 있어 추가했다.
+- **`.pre-commit-config.yaml`의 mypy hook이 항상 실패하던 버그**: `entry: uv run mypy`에 `pass_filenames: false`가
+  겹쳐 mypy에 검사 대상이 전달되지 않아 `Missing target module` 오류로 항상 실패했다. `entry: uv run mypy .`로
+  고쳐 `uv run pre-commit run mypy --all-files`가 통과하도록 했다.
+- **`CLAUDE.md`의 스킬 개수 설명 오류**: "`.claude/skills/`에 13개"라고 되어 있었지만 실제로 그 경로에는 12개만
+  있고 나머지 1개는 `.codex/skills/`에 있어 문장을 정확하게 다시 썼다.
+- **`.vscode/settings.json`의 Windows 전용 경로 제거**: `python.defaultInterpreterPath`가
+  `.venv/Scripts/python.exe`로 고정돼 있어 macOS/Linux에서 무효했다. VS Code Python 확장이 워크스페이스
+  루트의 `.venv`를 자동 탐지하므로 그냥 삭제했다.
+
 ## 2026-07-23 (2차 검토)
 
 - **CI 조건부 스킵 제거**: `src/`, `tests/`에 항상 최소 예제가 존재하게 되어(1차 검토에서 추가) `mypy`/`pytest`를

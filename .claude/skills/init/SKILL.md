@@ -25,8 +25,8 @@ description: 이 템플릿을 새 프로젝트로 초기화한다 (uv 프로젝�
 6. **DESIGN.md 개요 작성**: [.claude/docs/DESIGN.md](../../docs/DESIGN.md)의 "개요" 섹션을 채운다.
 7. **환경 변수**: 실제로 필요한 키가 있으면 `.env.example`에 채우고, `cp .env.example .env` 후 실제 값을 넣는다
    (`.env`는 `.gitignore`에 이미 포함되어 커밋되지 않는다).
-8. **첫 검증**: `uv run ruff check .`, `uv run mypy .`, `uv run pytest`가 통과하는지 확인한다
-   ([dev-environment.md](../../rules/dev-environment.md)).
+8. **첫 검증**: `uv run ruff check . --fix && uv run ruff format .`, `uv run mypy .`, `uv run pytest`가
+   통과하는지 확인한다 ([dev-environment.md](../../rules/dev-environment.md)).
 
 ## 체크리스트
 

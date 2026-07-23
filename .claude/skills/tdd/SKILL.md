@@ -25,5 +25,5 @@ description: 테스트 주도 개발(Red-Green-Refactor)로 기능을 구현하�
 
 ## 커밋 전
 
-`uv run ruff check . --fix && uv run mypy . && uv run pytest` 세 가지 모두 통과해야 한다
+`uv run ruff check . --fix && uv run ruff format . && uv run mypy . && uv run pytest` 모두 통과해야 한다
 ([dev-environment.md](../../rules/dev-environment.md)).
