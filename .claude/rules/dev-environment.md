@@ -36,3 +36,19 @@ uv run pre-commit install
 
 이후 `git commit` 시 자동으로 실행된다. pytest는 속도 문제로 pre-commit에 포함하지 않고 CI
 (`.github/workflows/ci.yml`)에서 실행한다.
+
+### Windows + 저장소 경로에 한글(비 ASCII)이 포함된 경우 주의
+
+Windows에서 `uv run pre-commit install`을 실행하면, 저장소 경로에 한글 등 비 ASCII 문자가 있을 때
+`.git/hooks/pre-commit` 스크립트에 그 경로를 **UTF-8이 아닌 시스템 로케일(CP949 등)** 로 잘못 인코딩해서
+쓰는 경우가 있다. Git Bash는 hook 스크립트를 UTF-8로 해석하므로 `INSTALL_PYTHON` 경로가 실제 `.venv`
+경로와 바이트 단위로 어긋나고, 그 결과 `` `pre-commit` not found. Did you forget to activate your
+virtualenv? `` 에러와 함께 `git commit`이 실패한다.
+
+**해결**: hook을 재설치할 때 `PYTHONUTF8=1`을 명시해서 UTF-8로 강제 기록한다.
+
+```bash
+PYTHONUTF8=1 uv run pre-commit install --overwrite
+```
+
+한 번만 다시 설치하면 되고, 이후 `git commit`은 평소처럼 동작한다.
