@@ -39,6 +39,15 @@
             "command": "python .claude/hooks/check-codex-after-plan.py"
           }
         ]
+      },
+      {
+        "matcher": "mcp__codex__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/log-codex-call.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -57,6 +66,15 @@
           {
             "type": "command",
             "command": "python .claude/hooks/post-test-analysis.py"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__codex__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/log-codex-call.py"
           }
         ]
       }

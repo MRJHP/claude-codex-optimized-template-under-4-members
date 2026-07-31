@@ -17,7 +17,9 @@ repos:
 
       - id: mypy
         name: mypy
-        entry: uv run mypy .
+        # `uv run mypy .`는 Windows에서 경로에 비ASCII 문자가 있으면 uv trampoline이
+        # 스크립트 경로를 canonicalize하지 못해 실패한다. `python -m mypy`로 우회한다.
+        entry: uv run python -m mypy .
         language: system
         types: [python]
         pass_filenames: false

@@ -36,10 +36,12 @@ def main() -> None:
     output = str(tool_response.get("stdout", "")) + str(tool_response.get("stderr", ""))
 
     if not any(pattern.search(output) for pattern in FAILURE_PATTERNS):
-        log_event("post-test-analysis", "PostToolUse", triggered=False)
+        log_event(
+            "post-test-analysis", "PostToolUse", triggered=False, detail="pytest", status="ok"
+        )
         sys.exit(0)
 
-    log_event("post-test-analysis", "PostToolUse", triggered=True)
+    log_event("post-test-analysis", "PostToolUse", triggered=True, detail="pytest", status="fail")
     suggestion = (
         "[post-test-analysis] pytest 실행이 실패한 것으로 보입니다. "
         "같은 실패를 2회 이상 반복해서 해결하지 못했다면 mcp__codex__codex로 "

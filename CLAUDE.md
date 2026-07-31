@@ -32,8 +32,8 @@
 
 ## 자동 협업 Hook
 
-`.claude/hooks/`의 5개 Python hook은 **차단 없이 제안만 출력**합니다. 실제로 Codex를 호출할지는
-Claude가 상황을 보고 스스로 판단합니다.
+`.claude/hooks/`의 6개 Python hook은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py` 제외).
+실제로 Codex를 호출할지는 Claude가 상황을 보고 스스로 판단합니다.
 
 | Hook | 시점 | 역할 |
 |---|---|---|
@@ -42,6 +42,7 @@ Claude가 상황을 보고 스스로 판단합니다.
 | check-codex-after-plan.py | 계획 확정 후 | Codex에게 계획 리뷰를 받을지 제안 |
 | post-implementation-review.py | 구현 후 | Codex 코드 리뷰 제안 |
 | post-test-analysis.py | 테스트 실행 후 | 테스트 실패 시 Codex 원인 분석 제안 |
+| log-codex-call.py | Codex MCP 도구 호출 전/후 | 실제 Codex 호출 시작/종료를 기록 (제안이 아니라 실호출 로그) |
 
 ## 스킬
 
