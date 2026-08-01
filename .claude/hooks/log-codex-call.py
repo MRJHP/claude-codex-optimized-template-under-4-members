@@ -141,7 +141,7 @@ def main() -> None:
         sys.exit(0)
 
     tool_response = data.get("tool_response", {}) or {}
-    failed = bool(tool_response.get("is_error"))
+    failed = hook_event == "PostToolUseFailure" or bool(tool_response.get("is_error"))
     status = "fail" if failed else "ok"
 
     thread_id = tool_response.get("threadId")
@@ -149,7 +149,7 @@ def main() -> None:
 
     log_event(
         "codex-invoke",
-        "PostToolUse",
+        hook_event or "PostToolUse",
         triggered=True,
         detail=tool_name,
         agent=agent_id,
