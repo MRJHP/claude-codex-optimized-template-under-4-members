@@ -7,5 +7,5 @@ __pycache__/
 .coverage
 htmlcov/
 .env
-.claude/logs/*.jsonl
+.claude/logs/*.jsonl*
 sandbox/
