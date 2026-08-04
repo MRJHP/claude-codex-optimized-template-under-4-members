@@ -60,7 +60,9 @@ Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게 로드하도
 Codex는 `.mcp.json`에 프로젝트 MCP 서버(`codex mcp-server`)로 등록되어 있어 저장소를
 클론하면 바로 연결됩니다. 다만 인증은 공유되지 않으며, 각자 자기 계정으로 `codex login`을
 한 번 실행해야 합니다 (자세한 절차는 [README.md](README.md) "시작하기" 참고). `.mcp.json`이
-없으면 `mcp__codex__codex` 도구 자체가 존재하지 않아 Codex 위임이 불가능해집니다.
+없으면 `mcp__codex__codex` 도구 자체가 존재하지 않아 Codex 위임이 불가능해집니다 — 이 템플릿을
+쓰는 프로젝트(agent-game-demo)에서 2026-08-03에 실제로 이 문제로 agent-visualizer의 Codex
+캐릭터가 전혀 반응하지 않았던 사례가 있었습니다.
 
 ## 품질 게이트
 

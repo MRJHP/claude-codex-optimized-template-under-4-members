@@ -26,4 +26,4 @@ codex login                   # 최초 1회, 각자 자기 계정으로 로그�
 ```
 
 Claude Code가 새 프로젝트 MCP 서버를 처음 인식하면 신뢰 여부를 묻는 승인 프롬프트가 뜬다
-(세션 재시작 필요할 수 있음).
+(세션 재시작 필요할 수 있음). 승인 후 `claude mcp list`로 `codex`가 `✔ Connected`인지 확인한다.
