@@ -5,10 +5,11 @@ Claude가 실제로 Codex를 호출하는 순간(제안이 아니라 실제 호�
 차단하지 않으며, 로그만 남긴다. agent-visualizer가 이 이벤트로 "Codex가 리뷰
 중"/"리뷰 완료" 상태와 토큰 사용량을 그린다.
 
-agent-visualizer의 캐릭터 로스터에는 Codex 쪽에 탐정/보안 리뷰어/퍼포먼스 리뷰어 3명이
-있는데, 이 hook이 항상 "codex"(탐정으로 폴백)만 기록하면 나머지 둘은 영원히 대기 상태로
-남는다. Codex에게 보낸 prompt 내용으로 리뷰 성격을 추정해 로스터 id를 직접 지정한다
-(resolveAgentId는 entry.agent가 로스터 id와 정확히 일치하면 그대로 채택한다).
+agent-visualizer의 Codex 쪽 캐릭터는 codex-detective 하나다(예전엔 탐정/보안 리뷰어/
+퍼포먼스 리뷰어 3명으로 나눴었는데, 실제 로그를 보니 security/perf는 한 번도 발동한 적이
+없어 늘 흑백으로 서 있기만 했다 — 2026-08-04 하나로 합침). Codex에게 보낸 prompt
+내용으로 리뷰가 보안/퍼포먼스 중점이었는지는 여전히 추정하되, 캐릭터를 나누는 대신
+detail(말풍선/카드/로그에 그대로 노출됨)에 표시만 남긴다.
 
 토큰 사용량 출처: mcp__codex__codex(-reply)의 tool_response에는 {"threadId", "content"}만
 있고 사용량이 없다 (실제 호출로 확인함). 대신 Codex CLI가 CODEX_HOME/sessions/YYYY/MM/DD/
@@ -56,18 +57,27 @@ PERF_KEYWORDS = (
 )
 
 
-def classify_agent(tool_input: dict[str, Any]) -> str:
-    """Codex에게 보낸 prompt 내용으로 담당 리뷰어 캐릭터를 고른다.
+FOCUS_LABELS = {"security": "🛡️ 보안 중점", "perf": "⏱️ 퍼포먼스 중점"}
+
+
+def classify_focus(tool_input: dict[str, Any]) -> str | None:
+    """Codex에게 보낸 prompt 내용으로 이 리뷰가 보안/퍼포먼스 중점이었는지 추정한다.
 
     보안 키워드가 우선한다 — 보안 이슈를 성능 최적화 요청보다 놓치면 안 되므로.
-    둘 다 없으면 범용 리뷰(codex-detective)로 취급한다.
+    둘 다 없으면 None(범용 리뷰)을 반환한다.
     """
     text = " ".join(str(v) for v in tool_input.values() if isinstance(v, str)).lower()
     if any(keyword in text for keyword in SECURITY_KEYWORDS):
-        return "codex-security"
+        return "security"
     if any(keyword in text for keyword in PERF_KEYWORDS):
-        return "codex-perf"
-    return DEFAULT_AGENT_ID
+        return "perf"
+    return None
+
+
+def build_detail(tool_name: str, focus: str | None) -> str:
+    if focus is None:
+        return tool_name
+    return f"{FOCUS_LABELS[focus]} · {tool_name}"
 
 
 def codex_home() -> Path:
@@ -127,15 +137,15 @@ def main() -> None:
     hook_event = str(data.get("hook_event_name", ""))
     tool_name = str(data.get("tool_name", "codex"))
     tool_input = data.get("tool_input", {}) or {}
-    agent_id = classify_agent(tool_input)
+    detail = build_detail(tool_name, classify_focus(tool_input))
 
     if hook_event == "PreToolUse":
         log_event(
             "codex-invoke",
             "PreToolUse",
             triggered=True,
-            detail=tool_name,
-            agent=agent_id,
+            detail=detail,
+            agent=DEFAULT_AGENT_ID,
             status="working",
         )
         sys.exit(0)
@@ -151,8 +161,8 @@ def main() -> None:
         "codex-invoke",
         hook_event or "PostToolUse",
         triggered=True,
-        detail=tool_name,
-        agent=agent_id,
+        detail=detail,
+        agent=DEFAULT_AGENT_ID,
         status=status,
         usage=usage_payload,
     )
