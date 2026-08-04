@@ -3,6 +3,24 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-08-04 (Codex MCP 서버 등록 `.mcp.json` 반영)
+
+- **`.mcp.json` 신규 추가**: 이 파일이 없으면 `mcp__codex__codex` 도구 자체가 존재하지 않아
+  Codex를 전혀 호출할 수 없다. agent-game-demo/OrderBridge에서는 2026-08-03에 이미 같은 문제를
+  겪고 반영했었는데, 이 템플릿에는 반영이 누락되어 있었다 (`sync_scaffold.py --check`로 drift
+  확인 후 scaffold 원본과 동일한 내용으로 추가). README.md "시작하기", CLAUDE.md "Codex 설정"에
+  `codex login` 안내를 추가했다.
+
+## 2026-08-04 (PM 서브에이전트 추가)
+
+- **`.claude/agents/pm.md` 신규 추가**: 기존에는 `general-purpose.md`(조사/실행 위임) 하나뿐이었는데,
+  코드를 직접 쓰지 않고 작업을 실행 단위로 분해하고 CHANGELOG.md/git log/DESIGN.md를 근거로 진행
+  상황을 추적하며 [codex-delegation.md](.claude/rules/codex-delegation.md) 기준으로 Codex 상담
+  타이밍을 판단하는 전담 서브에이전트를 별도로 두었다. 1인 개발 + Claude(구현)-Codex(리뷰) 체계라는
+  이 템플릿의 전제에 맞춰, 여러 사람 간 작업 배분이 아니라 "무엇을 먼저/다음에 할지" 순서 정리에
+  초점을 맞췄다.
+- `.claude/skills/codex-system/SKILL.md`에 새 서브에이전트에 대한 설명을 추가했다.
+
 ## 2026-07-28
 
 - **Windows 한글 경로에서 pre-commit hook 인코딩 깨지는 문제 발견 및 해결법 기록**: 저장소 경로에

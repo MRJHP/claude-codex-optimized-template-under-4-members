@@ -57,6 +57,11 @@ Agent/Skill/Orchestrator/Test/Evolution 구조로 만드는 별도 스킬로, �
 `.codex/AGENTS.md`는 Codex CLI용 컨텍스트 문서이며, `.codex/skills/context-loader/`는
 Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게 로드하도록 안내합니다.
 
+Codex는 `.mcp.json`에 프로젝트 MCP 서버(`codex mcp-server`)로 등록되어 있어 저장소를
+클론하면 바로 연결됩니다. 다만 인증은 공유되지 않으며, 각자 자기 계정으로 `codex login`을
+한 번 실행해야 합니다 (자세한 절차는 [README.md](README.md) "시작하기" 참고). `.mcp.json`이
+없으면 `mcp__codex__codex` 도구 자체가 존재하지 않아 Codex 위임이 불가능해집니다.
+
 ## 품질 게이트
 
 - **CI**: `.github/workflows/ci.yml`이 push/PR마다 `ruff check`, `ruff format --check`, `mypy`, `pytest`를
