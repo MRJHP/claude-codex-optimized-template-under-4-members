@@ -6,6 +6,8 @@ Codex CLI는 `mcp__codex__codex` 도구로 호출되어 리뷰를 전담합니�
 
 자세한 협업 구조, 규칙, 스킬, 품질 게이트는 [CLAUDE.md](CLAUDE.md)를 참고하세요.
 작업 이력은 [CHANGELOG.md](CHANGELOG.md)에 날짜순으로 기록됩니다.
+전체 구조를 한눈에 보려면 [archive/Claude_Codex_최적화_템플릿_설명서.png](archive/Claude_Codex_최적화_템플릿_설명서.png)
+설명 이미지를 참고하세요.
 
 ## 시작하기
 

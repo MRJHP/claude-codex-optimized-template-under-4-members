@@ -19,6 +19,9 @@ SKILL_HINTS = [
     (("설계", "design.md", "아키텍처 문서"), "update-design / design-tracker"),
     (("codex", "코덱스", "세컨드 오피니언"), "codex-system"),
     (("초기화", "init", "새 저장소"), "init"),
+    (("여기까지 정리", "이어서 하게 기록", "체크포인트"), "checkpointing"),
+    (("하네스", "에이전트와 스킬 설계", "리포트로 만들어"), "harness-lab"),
+    (("라이브러리 문서", "의존성 추가"), "update-lib-docs"),
 ]
 
 

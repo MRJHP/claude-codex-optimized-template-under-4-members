@@ -78,6 +78,17 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__codex__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/log-codex-call.py"
+          }
+        ]
+      }
     ]
   }
 }
