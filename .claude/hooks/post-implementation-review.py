@@ -11,6 +11,13 @@ from _hooklog import log_event
 from _risk_keywords import RISK_PATH_KEYWORDS
 
 
+def is_risky(file_path: str, content: str) -> bool:
+    path_lower = file_path.lower()
+    if any(k in path_lower for k in RISK_PATH_KEYWORDS):
+        return True
+    return len(content) > 4000  # 한 번에 너무 큰 변경
+
+
 def main() -> None:
     try:
         data = json.loads(sys.stdin.read() or "{}")
@@ -18,9 +25,10 @@ def main() -> None:
         data = {}
 
     tool_input = data.get("tool_input", {}) or {}
-    file_path = str(tool_input.get("file_path", "")).lower()
+    file_path = str(tool_input.get("file_path", ""))
+    content = str(tool_input.get("content", "") or tool_input.get("new_string", ""))
 
-    if not file_path or not any(k in file_path for k in RISK_PATH_KEYWORDS):
+    if not file_path or not is_risky(file_path, content):
         log_event("post-implementation-review", "PostToolUse", triggered=False, detail=file_path)
         sys.exit(0)
 
