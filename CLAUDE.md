@@ -24,7 +24,7 @@
 
 ## Agent 모델 선택
 
-Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(범용 catch-all)인 경우에만 작업 특성에 맞춰 `model` 파라미터(Haiku/Sonnet/Opus/Fable 중 선택)를 명시적으로 고른다(간단한 조회·파일 검색은 Haiku, 일반적인 구현 작업은 Sonnet, 설계·복잡한 판단이 필요한 작업은 Opus, 이 세 등급으로 판단하기 애매한 작업에는 Fable도 후보로 고려). `Explore`, `general-purpose`, `pm` 등 이미 정의된 전용 agent는 각자의 정의(`.claude/agents/`)에 맞는 모델이 있으므로 이 규칙을 적용하지 않고 `model`을 지정하지 않는다(정의된 기본값 사용). 메인 세션 자체의 모델(`/model`로 설정되는 값)은 이 규칙과 무관하며 자동으로 바뀌지 않는다.
+Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(범용 catch-all)인 경우에만 작업 특성에 맞춰 `model` 파라미터(Haiku/Sonnet/Opus/Fable 중 선택)를 명시적으로 고른다(간단한 조회·파일 검색은 Haiku, 일반적인 구현 작업은 Sonnet, 설계·복잡한 판단이 필요한 작업은 Opus, 장시간 자율 세션·다단계 검증·착수 전 조사가 필요한 작업은 Fable — `.claude/skills/harness-lab/references/agent-design.md`의 Agent 모델 선택 루브릭과 동일 기준). `Explore`, `general-purpose`, `pm` 등 이미 정의된 전용 agent는 각자의 정의(`.claude/agents/`)에 맞는 모델이 있으므로 이 규칙을 적용하지 않고 `model`을 지정하지 않는다(정의된 기본값 사용). 메인 세션 자체의 모델(`/model`로 설정되는 값)은 이 규칙과 무관하며 자동으로 바뀌지 않는다.
 
 ## 지식 베이스
 
