@@ -22,6 +22,10 @@
 | [security.md](.claude/rules/security.md) | 기밀 정보 관리, 입력 검증 |
 | [testing.md](.claude/rules/testing.md) | TDD, AAA 패턴, 커버리지 80% |
 
+## Agent 모델 선택
+
+Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(범용 catch-all)인 경우에만 작업 특성에 맞춰 `model` 파라미터(Haiku/Sonnet/Opus/Fable 중 선택)를 명시적으로 고른다(간단한 조회·파일 검색은 Haiku, 일반적인 구현 작업은 Sonnet, 설계·복잡한 판단이 필요한 작업은 Opus, 이 세 등급으로 판단하기 애매한 작업에는 Fable도 후보로 고려). `Explore`, `general-purpose`, `pm` 등 이미 정의된 전용 agent는 각자의 정의(`.claude/agents/`)에 맞는 모델이 있으므로 이 규칙을 적용하지 않고 `model`을 지정하지 않는다(정의된 기본값 사용). 메인 세션 자체의 모델(`/model`로 설정되는 값)은 이 규칙과 무관하며 자동으로 바뀌지 않는다.
+
 ## 지식 베이스
 
 - [.claude/docs/DESIGN.md](.claude/docs/DESIGN.md) — 설계 문서 (변경 시 자동 업데이트 대상)
@@ -32,11 +36,12 @@
 
 ## 자동 협업 Hook
 
-`.claude/hooks/`의 6개 Python hook은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py` 제외).
+`.claude/hooks/`의 7개 Python hook은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py` 제외).
 실제로 Codex를 호출할지는 Claude가 상황을 보고 스스로 판단합니다.
 
 | Hook | 시점 | 역할 |
 |---|---|---|
+| session-start-reminders.py | 세션 시작 시 | `CHANGELOG.md` 최상단(가장 최근) 항목의 헤딩을 상기 (order-bridge/pc-manager/agent-visualizer-hub와 같은 패턴, `/init` 이후에도 그대로 유효) |
 | agent-router.py | 사용자 입력 시 | 입력 내용에서 어떤 스킬/작업 흐름이 적합한지 제안 |
 | check-codex-before-write.py | 파일 편집 전 | 위험도가 높은 변경이면 Codex 상담 제안 |
 | check-codex-after-plan.py | 계획 확정 후 | Codex에게 계획 리뷰를 받을지 제안 |
