@@ -22,9 +22,11 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## Hook은 강제가 아니라 제안
 
-`.claude/hooks/`의 6개 hook은 전부 **차단하지 않는다** (`permissionDecision: allow` 또는 `additionalContext`만
-반환). 이 중 5개는 Codex 위임을 제안하는 훅이고, `log-codex-call.py` 1개는 실제 Codex 호출이 일어났을 때
-그 사실을 로그로 남기는 훅이다. 즉:
+`.claude/hooks/`의 7개 hook은 전부 **차단하지 않는다** (`permissionDecision: allow` 또는 `additionalContext`만
+반환). 이 중 6개(`session-start-reminders.py`, `agent-router.py`, `check-codex-before-write.py`,
+`check-codex-after-plan.py`, `post-implementation-review.py`, `post-test-analysis.py`)는 Codex 위임을
+제안하거나 세션 시작 시 컨텍스트를 상기시키는 훅이고, `log-codex-call.py` 1개는 실제 Codex 호출이
+일어났을 때 그 사실을 로그로 남기는 훅이다. 즉:
 
 - Hook이 "Codex 상담을 제안합니다"라고 메시지를 띄워도, 그 작업이 계속 진행된다.
 - Codex를 실제로 호출할지 말지는 Claude가 [codex-delegation.md](../../rules/codex-delegation.md) 기준으로
