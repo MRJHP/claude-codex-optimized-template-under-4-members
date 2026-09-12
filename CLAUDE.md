@@ -13,7 +13,7 @@ VS Code 내장 터미널의 Claude Code CLI 환경에서는 볼드 소제목/섹
 ## 협업 구조
 
 - **Claude Code**: 오케스트레이터 + 리서치. 요구사항 파악, 계획 수립, 코드 작성, WebSearch를 통한 리서치를 담당합니다.
-- **Codex CLI**: 리뷰 전담. `mcp__codex__codex` 도구를 통해 Claude가 직접 호출하며, 구현 전 상담·구현 후 리뷰·막혔을 때 세컨드 오피니언 역할을 합니다.
+- **Codex CLI**: 리뷰 전담. Bash로 `codex exec`를 호출해 Claude가 직접 부르며, 구현 전 상담·구현 후 리뷰·막혔을 때 세컨드 오피니언 역할을 합니다(2026-09-12부터 — 이전에는 `mcp__codex__codex` MCP 도구였으나 Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 전환).
 - 역할 분담의 세부 기준은 [.claude/rules/codex-delegation.md](.claude/rules/codex-delegation.md)를 따릅니다.
 
 ## 항상 지켜야 할 규칙
@@ -54,7 +54,7 @@ Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(�
 | check-codex-after-plan.py | 계획 확정 후 | Codex에게 계획 리뷰를 받을지 제안 |
 | post-implementation-review.py | 구현 후 | Codex 코드 리뷰 제안 |
 | post-test-analysis.py | 테스트 실행 후 | 테스트 실패 시 Codex 원인 분석 제안 |
-| log-codex-call.py | Codex MCP 도구 호출 전/후 | 실제 Codex 호출 시작/종료를 기록 (제안이 아니라 실호출 로그) |
+| log-codex-call.py | `codex exec` Bash 호출 전/후 | 실제 Codex 호출 시작/종료를 기록 (제안이 아니라 실호출 로그) |
 
 ## 스킬
 
@@ -69,12 +69,10 @@ Agent/Skill/Orchestrator/Test/Evolution 구조로 만드는 별도 스킬로, �
 `.codex/AGENTS.md`는 Codex CLI용 컨텍스트 문서이며, `.codex/skills/context-loader/`는
 Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게 로드하도록 안내합니다.
 
-Codex는 `.mcp.json`에 프로젝트 MCP 서버(`codex mcp-server`)로 등록되어 있어 저장소를
-클론하면 바로 연결됩니다. 다만 인증은 공유되지 않으며, 각자 자기 계정으로 `codex login`을
-한 번 실행해야 합니다 (자세한 절차는 [README.md](README.md) "시작하기" 참고). `.mcp.json`이
-없으면 `mcp__codex__codex` 도구 자체가 존재하지 않아 Codex 위임이 불가능해집니다 — 이 템플릿을
-쓰는 프로젝트(agent-game-demo)에서 2026-08-03에 실제로 이 문제로 agent-visualizer의 Codex
-캐릭터가 전혀 반응하지 않았던 사례가 있었습니다.
+Codex는 MCP 서버로 등록하지 않는다(2026-09-12부터 — Codex CLI 0.154.0에서 `codex mcp-server`가
+삭제됨). 대신 Claude가 Bash로 `codex exec`를 직접 호출한다([codex-delegation.md](.claude/rules/codex-delegation.md)
+참고). 로컬에 Codex CLI가 설치돼 있고 각자 자기 계정으로 `codex login`을 한 번 실행해야 한다
+(자세한 절차는 [README.md](README.md) "시작하기" 참고).
 
 ## 품질 게이트
 

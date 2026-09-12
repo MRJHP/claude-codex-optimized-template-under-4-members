@@ -51,7 +51,7 @@
         ]
       },
       {
-        "matcher": "mcp__codex__.*",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
@@ -80,7 +80,7 @@
         ]
       },
       {
-        "matcher": "mcp__codex__.*",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
@@ -91,7 +91,7 @@
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "mcp__codex__.*",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",

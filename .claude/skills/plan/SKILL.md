@@ -24,7 +24,7 @@ description: 기능 구현 전 단계별 구현 계획을 작성한다. "계획 
    - 재사용할 기존 함수/유틸 (파일 경로 포함)
    - 테스트/검증 방법
 5. 아키텍처가 자명하지 않으면 [codex-delegation.md](../../rules/codex-delegation.md) 기준에 따라
-   `mcp__codex__codex`로 계획에 대한 세컨드 오피니언을 구한다.
+   Bash로 `codex exec`를 호출해 계획에 대한 세컨드 오피니언을 구한다.
 6. 계획을 사용자에게 제시하고 승인받은 뒤에만 구현을 시작한다.
 
 ## 계획과 DESIGN.md의 관계

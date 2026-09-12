@@ -9,9 +9,10 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## 연결 방식
 
-- Codex는 **MCP 도구**로 연결되어 있다: `mcp__codex__codex`(신규 세션 시작), `mcp__codex__codex-reply`(같은
-  Codex 세션 이어가기). 별도 CLI 셸아웃이 아니라 Claude가 도구 호출로 직접 부른다.
-- `.claude/agents/general-purpose.md` 서브에이전트는 이 두 도구에 접근 권한을 가지고 있어, 조사 작업 중에도
+- Codex는 Bash로 `codex exec --json`(신규 세션)/`codex exec resume <thread_id> --json`(같은 세션
+  이어가기)을 호출해 부른다(2026-09-12부터 — 이전에는 `mcp__codex__codex`/`mcp__codex__codex-reply`
+  MCP 도구였으나 Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 전환).
+- `.claude/agents/general-purpose.md` 서브에이전트는 Bash 도구 권한을 가지고 있어, 조사 작업 중에도
   필요하면 Codex를 호출할 수 있다.
 - `.claude/agents/pm.md` 서브에이전트는 작업 분해·진행 상황 추적을 전담한다. 코드를 직접 쓰지 않고,
   CHANGELOG.md/git log/DESIGN.md를 근거로 언제 Codex 상담이 필요한지 판단 근거를 정리해서 메인
@@ -41,9 +42,12 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## 좋은 위임 예시
 
-```
-mcp__codex__codex 호출:
-"다음 함수가 동시성 환경에서 안전한지 검토해줘. 파일: src/cache.py:42-70 (아래 첨부).
+```bash
+codex exec --json --sandbox read-only - <<'CODEX_PROMPT'
+다음 함수가 동시성 환경에서 안전한지 검토해줘. 파일: src/cache.py:42-70 (아래 첨부).
 이미 lock을 추가하는 방법을 고려했지만 성능 저하가 우려돼서 보류했어.
-락 없이 안전하게 만들 방법이 있는지, 혹은 락이 불가피한지 판단해줘."
+락 없이 안전하게 만들 방법이 있는지, 혹은 락이 불가피한지 판단해줘.
+CODEX_PROMPT
 ```
+
+(프롬프트를 `"..."`로 셸 인용하지 않는 이유는 [codex-delegation.md](../../rules/codex-delegation.md) 참고.)

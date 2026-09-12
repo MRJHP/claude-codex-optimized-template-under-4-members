@@ -42,8 +42,8 @@ def main() -> None:
     )
     reason = (
         "[check-codex-after-plan] 계획이 크거나 되돌리기 어려운 변경을 포함하는 것으로 보입니다. "
-        "실행에 들어가기 전에 mcp__codex__codex로 Codex에게 계획 리뷰를 받아볼 것을 제안합니다 "
-        "(강제 아님)."
+        "실행에 들어가기 전에 Bash로 codex exec를 호출해 Codex에게 계획 리뷰를 받아볼 것을 "
+        "제안합니다 (강제 아님)."
     )
     print(
         json.dumps(

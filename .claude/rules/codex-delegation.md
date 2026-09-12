@@ -1,15 +1,33 @@
 # Codex 위임 규칙
 
-Codex는 `mcp__codex__codex` (신규 세션) / `mcp__codex__codex-reply` (기존 세션 이어가기) MCP 도구로 직접
-호출한다. 아래 규칙과 `.claude/hooks/`의 제안은 **강제가 아니라 판단 기준**이다. 실제 호출 여부는 상황에 맞게
+**2026-09-12 변경**: Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 `mcp__codex__codex` MCP 도구
+자체가 사라졌다. Codex는 이제 **Bash로 `codex exec`를 직접 호출**한다.
+
+- 신규 세션: `codex exec --json --sandbox read-only - <<'CODEX_PROMPT' ... CODEX_PROMPT`
+  (heredoc으로 stdin에 프롬프트를 넣는다. `-`는 "stdin에서 읽어라"는 뜻이다.)
+- 기존 세션 이어가기: `codex exec --sandbox read-only resume <thread_id> --json - <<'CODEX_PROMPT' ... CODEX_PROMPT`
+  (`--sandbox`는 `resume` **앞**에 온다 — `exec`의 옵션이지 `resume`의 옵션이 아니다. `thread_id`는
+  직전 호출의 `--json` 출력 중 `{"type":"thread.started","thread_id":"..."}` 이벤트에서 얻는다.)
+- **프롬프트를 `"..."`로 셸 인용해 인자로 넘기지 않는다.** 코드/diff에 백틱이나 `$()`가 섞여 있으면
+  Codex의 sandbox가 시작되기도 전에 Bash가 먼저 실행해버릴 수 있다([security.md](security.md) 셸
+  인젝션 금지 원칙과 동일한 이유). 항상 heredoc(따옴표로 감싼 구분자, 예: `<<'CODEX_PROMPT'`)으로
+  stdin에 전달한다.
+- 파일을 고치지 않는 상담·리뷰에는 `--sandbox read-only`를 기본값으로 쓴다. 이 프로젝트의 Codex
+  역할은 "리뷰 전담"이므로 `workspace-write`가 필요한 상황은 사실상 없다.
+- `--json`을 빼먹지 않는다 — `log-codex-call.py`가 stdout의 JSONL 이벤트로 진행 상태와 토큰 사용량을
+  집계해 agent-visualizer에 반영한다([자동 협업 Hook](../../CLAUDE.md#자동-협업-hook) 참고). 다만 이
+  hook의 호출 판별·파싱은 명령 문자열 패턴 매칭에 의존하는 한계가 있다(오탐/누락 가능) — 실패해도
+  Codex 호출 자체는 막히지 않고 대시보드 집계만 부정확해질 수 있다.
+
+아래 규칙과 `.claude/hooks/`의 제안은 **강제가 아니라 판단 기준**이다. 실제 호출 여부는 상황에 맞게
 Claude가 결정한다.
 
 **사전 승인된 자율 판단**: 사용자는 Codex와의 지속적인 협업을 이미 승인했다. Claude는 아래 기준에
-따라 위임이 필요하다고 판단되면 **매번 사용자에게 물어보지 않고** 바로 `mcp__codex__codex`/
-`mcp__codex__codex-reply`를 호출한다. 반대로 위임이 불필요하다고 판단되면(아래 "위임하지 않아도
-되는 경우") 그 이유를 간단히 밝히고 넘어가면 되며, 이 역시 사용자 확인을 기다릴 필요가 없다. 다만
-Codex 호출 자체가 아니라 그 결과를 코드에 반영하는 작업(파일 수정, 커밋 등)은 이 규칙과 별개로
-프로젝트의 다른 안전 수칙(예: 파괴적 git 작업 전 확인)을 그대로 따른다.
+따라 위임이 필요하다고 판단되면 **매번 사용자에게 물어보지 않고** 바로 위 명령으로 `codex exec`를
+호출한다. 반대로 위임이 불필요하다고 판단되면(아래 "위임하지 않아도 되는 경우") 그 이유를 간단히
+밝히고 넘어가면 되며, 이 역시 사용자 확인을 기다릴 필요가 없다. 다만 Codex 호출 자체가 아니라 그
+결과를 코드에 반영하는 작업(파일 수정, 커밋 등)은 이 규칙과 별개로 프로젝트의 다른 안전 수칙(예:
+파괴적 git 작업 전 확인)을 그대로 따른다.
 
 ## 기본 원칙: 모든 작업에 Codex 협업 (진행 전/후)
 

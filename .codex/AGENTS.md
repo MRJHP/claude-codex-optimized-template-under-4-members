@@ -1,8 +1,8 @@
 # Codex CLI 컨텍스트 (리뷰 전담)
 
 이 프로젝트에서 Codex는 **리뷰 전담** 역할이다. Claude Code가 오케스트레이터로서 계획을 세우고 코드를 작성하며,
-필요할 때 `mcp__codex__codex` / `mcp__codex__codex-reply` 도구로 Codex를 호출한다. Codex는 별도로 파일을
-직접 편집하지 않고, 검토 의견과 분석을 반환하는 데 집중한다.
+필요할 때 Bash로 `codex exec --json`(이어가기는 `codex exec resume <thread_id> --json`)을 호출해 Codex를
+부른다. Codex는 별도로 파일을 직접 편집하지 않고, 검토 의견과 분석을 반환하는 데 집중한다.
 
 세션을 시작할 때 아래 순서로 컨텍스트를 로드한다 (자세한 절차는
 [skills/context-loader/SKILL.md](skills/context-loader/SKILL.md) 참고):
