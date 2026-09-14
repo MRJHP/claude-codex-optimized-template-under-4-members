@@ -8,7 +8,7 @@
 import json
 import sys
 
-from _hooklog import log_event
+from _hooklog import already_suggested, log_event
 
 RISK_KEYWORDS = (
     "migration",
@@ -31,10 +31,21 @@ def main() -> None:
 
     tool_input = data.get("tool_input", {}) or {}
     plan_text = str(tool_input.get("plan", ""))
+    session_id = str(data.get("session_id", ""))
 
     triggered = len(plan_text) > 1500 or any(k in plan_text.lower() for k in RISK_KEYWORDS)
     if not triggered:
         log_event("check-codex-after-plan", "PreToolUse", triggered=False)
+        sys.exit(0)
+
+    if already_suggested(session_id, "check-codex-after-plan"):
+        log_event(
+            "check-codex-after-plan",
+            "PreToolUse",
+            triggered=True,
+            detail=f"plan_len={len(plan_text)}",
+            status="deduped",
+        )
         sys.exit(0)
 
     log_event(

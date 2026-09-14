@@ -3,6 +3,25 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-09-14 (`AGENTS.md` 자동 로드 경로 버그 수정 + 훅 알림 피로 완화)
+
+- **`AGENTS.md`를 `.codex/AGENTS.md`에서 저장소 루트로 이동**: Codex CLI 공식 문서
+  (developers.openai.com/codex/guides/agents-md)를 확인한 결과, Codex CLI는 git 루트에서
+  cwd까지 내려가는 경로 위의 `AGENTS.md`만 자동으로 읽는다. `.codex/`는 그 경로에 있지 않아
+  세션 시작 시 자동 로드되지 않고 있었다 — 2026-07-23에 한 번 "존재하지 않는 `.claude/CLAUDE.md`를
+  가리키던 링크"는 고쳤지만, 파일 자체의 위치가 애초에 잘못돼 있던 건 놓쳤던 것으로 보인다.
+  이동하면서 `resume` 명령 예시(`codex exec resume <id> --json`)에 빠져 있던 `--sandbox read-only`도
+  같이 추가했다(`.claude/rules/codex-delegation.md` 기준과 불일치했음 — read-only 안전장치 없이
+  재개하는 예시가 남아 있었다). 참조하던 `.claude/skills/codex-system/SKILL.md`,
+  `.claude/skills/init/SKILL.md`, `CLAUDE.md` 3곳도 새 경로로 갱신했다.
+- **`check-codex-before-write.py` / `check-codex-after-plan.py` / `post-implementation-review.py`
+  알림 피로 완화**: 세 hook이 각자 독립적으로 위험 판단을 내려, 세션 중 여러 파일을 고치면 같은
+  취지의 제안 메시지가 반복 출력됐다. `status-board-reminder.py`(워크스페이스 루트 하네스)와 같은
+  패턴으로 `_hooklog.py`에 `already_suggested(session_id, hook_name)`을 추가해, hook별로 세션당
+  최초 1회만 제안 메시지를 출력하도록 했다(로그 기록 자체는 매번 그대로 남긴다 — 억제되는 건
+  출력 메시지뿐). Codex 사전 상담으로 방향 확인(공식 문서와 일치) 후 진행, 세션 ID 없을 때는
+  억제하지 않는 것과 상태 파일 원자적 갱신(임시 파일 + `os.replace`)은 Codex 지적을 반영했다.
+
 ## 2026-08-04 (Codex MCP 서버 등록 `.mcp.json` 반영)
 
 - **`.mcp.json` 신규 추가**: 이 파일이 없으면 `mcp__codex__codex` 도구 자체가 존재하지 않아

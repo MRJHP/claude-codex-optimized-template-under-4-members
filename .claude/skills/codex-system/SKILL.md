@@ -17,7 +17,9 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 - `.claude/agents/pm.md` 서브에이전트는 작업 분해·진행 상황 추적을 전담한다. 코드를 직접 쓰지 않고,
   CHANGELOG.md/git log/DESIGN.md를 근거로 언제 Codex 상담이 필요한지 판단 근거를 정리해서 메인
   오케스트레이터에게 반환한다.
-- `.codex/AGENTS.md`는 Codex 쪽에서 보는 프로젝트 컨텍스트 문서다. 저장소 루트 `CLAUDE.md`와 짝을 이룬다.
+- 저장소 루트 `AGENTS.md`는 Codex 쪽에서 보는 프로젝트 컨텍스트 문서다. `CLAUDE.md`와 짝을 이룬다
+  (Codex CLI는 git 루트→cwd 경로의 `AGENTS.md`만 자동으로 읽으므로, `.codex/` 같은 하위 폴더에 두면
+  자동 로드되지 않는다 — 2026-09-14 이 경로로 정정).
 - `.codex/skills/context-loader/`는 Codex가 `.claude/rules/`, `.claude/docs/DESIGN.md`를 함께 참고하도록
   안내해서, Claude와 Codex가 같은 규칙 아래에서 작업하게 한다.
 

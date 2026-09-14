@@ -1,11 +1,12 @@
 # Codex CLI 컨텍스트 (리뷰 전담)
 
 이 프로젝트에서 Codex는 **리뷰 전담** 역할이다. Claude Code가 오케스트레이터로서 계획을 세우고 코드를 작성하며,
-필요할 때 Bash로 `codex exec --json`(이어가기는 `codex exec resume <thread_id> --json`)을 호출해 Codex를
-부른다. Codex는 별도로 파일을 직접 편집하지 않고, 검토 의견과 분석을 반환하는 데 집중한다.
+필요할 때 Bash로 `codex exec --json`(이어가기는 `codex exec --sandbox read-only resume <thread_id> --json`,
+`--sandbox`는 `exec`의 옵션이라 `resume` **앞**에 온다)을 호출해 Codex를 부른다. Codex는 별도로 파일을 직접
+편집하지 않고, 검토 의견과 분석을 반환하는 데 집중한다.
 
 세션을 시작할 때 아래 순서로 컨텍스트를 로드한다 (자세한 절차는
-[skills/context-loader/SKILL.md](skills/context-loader/SKILL.md) 참고):
+[.codex/skills/context-loader/SKILL.md](.codex/skills/context-loader/SKILL.md) 참고):
 
 1. `CLAUDE.md` (저장소 루트) — 프로젝트 개요, 협업 구조
 2. `.claude/rules/*.md` — 언어, Codex 위임 기준, 코딩 원칙, 개발 환경, 보안, 테스트 규칙

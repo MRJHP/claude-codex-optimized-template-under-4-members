@@ -21,7 +21,7 @@ description: 이 템플릿을 새 프로젝트로 초기화한다 (uv 프로젝�
    ```
 4. **git 초기화** (아직 git 저장소가 아니라면 사용자에게 확인 후 `git init`).
 5. **CLAUDE.md / AGENTS.md 커스터마이즈**: `CLAUDE.md`의 프로젝트 개요를 실제 프로젝트에 맞게 채우고,
-   `.codex/AGENTS.md`도 동일하게 갱신한다.
+   저장소 루트 `AGENTS.md`도 동일하게 갱신한다.
 6. **DESIGN.md 개요 작성**: [.claude/docs/DESIGN.md](../../docs/DESIGN.md)의 "개요" 섹션을 채운다.
 7. **환경 변수**: 실제로 필요한 키가 있으면 `.env.example`에 채우고, `cp .env.example .env` 후 실제 값을 넣는다
    (`.env`는 `.gitignore`에 이미 포함되어 커밋되지 않는다).
@@ -34,7 +34,7 @@ description: 이 템플릿을 새 프로젝트로 초기화한다 (uv 프로젝�
 - [ ] `pre-commit install` 완료
 - [ ] `pyproject.toml`의 프로젝트명/설명 갱신
 - [ ] `src/project`, `tests/test_project.py` 예제를 실제 패키지/테스트로 교체 (남아있지 않은지 확인)
-- [ ] CLAUDE.md, `.codex/AGENTS.md`에 실제 프로젝트 설명 반영
+- [ ] CLAUDE.md, 루트 `AGENTS.md`에 실제 프로젝트 설명 반영
 - [ ] `LICENSE`의 저작권자/연도가 실제 프로젝트에 맞는지 확인 (필요 없으면 삭제)
 - [ ] `.env.example`에 실제로 필요한 키를 채움 (실제 `.env`는 커밋 금지, [security.md](../../rules/security.md))
 - [ ] GitHub Actions CI(`.github/workflows/ci.yml`)가 push 후 통과하는지 확인

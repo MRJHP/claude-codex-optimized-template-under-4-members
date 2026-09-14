@@ -8,7 +8,7 @@
 import json
 import sys
 
-from _hooklog import log_event
+from _hooklog import already_suggested, log_event
 from _risk_keywords import RISK_PATH_KEYWORDS
 
 
@@ -28,9 +28,20 @@ def main() -> None:
     tool_input = data.get("tool_input", {}) or {}
     file_path = str(tool_input.get("file_path", ""))
     content = str(tool_input.get("content", "") or tool_input.get("new_string", ""))
+    session_id = str(data.get("session_id", ""))
 
     if not file_path or not is_risky(file_path, content):
         log_event("check-codex-before-write", "PreToolUse", triggered=False, detail=file_path)
+        sys.exit(0)
+
+    if already_suggested(session_id, "check-codex-before-write"):
+        log_event(
+            "check-codex-before-write",
+            "PreToolUse",
+            triggered=True,
+            detail=file_path,
+            status="deduped",
+        )
         sys.exit(0)
 
     log_event("check-codex-before-write", "PreToolUse", triggered=True, detail=file_path)

@@ -66,8 +66,10 @@ Agent/Skill/Orchestrator/Test/Evolution 구조로 만드는 별도 스킬로, �
 
 ## Codex 설정
 
-`.codex/AGENTS.md`는 Codex CLI용 컨텍스트 문서이며, `.codex/skills/context-loader/`는
-Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게 로드하도록 안내합니다.
+저장소 루트 `AGENTS.md`는 Codex CLI용 컨텍스트 문서이며(Codex CLI는 git 루트→cwd 경로의 `AGENTS.md`만
+자동으로 읽으므로 반드시 루트에 있어야 합니다 — 이전에는 `.codex/AGENTS.md`에 있어 자동 로드되지 않았습니다,
+2026-09-14 정정), `.codex/skills/context-loader/`는 Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게
+로드하도록 안내합니다.
 
 Codex는 MCP 서버로 등록하지 않는다(2026-09-12부터 — Codex CLI 0.154.0에서 `codex mcp-server`가
 삭제됨). 대신 Claude가 Bash로 `codex exec`를 직접 호출한다([codex-delegation.md](.claude/rules/codex-delegation.md)
