@@ -39,8 +39,7 @@ def main() -> None:
             "check-codex-before-write",
             "PreToolUse",
             triggered=True,
-            detail=file_path,
-            status="deduped",
+            detail=f"{file_path} (deduped)",
         )
         sys.exit(0)
 

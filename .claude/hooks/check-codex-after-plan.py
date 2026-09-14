@@ -43,8 +43,7 @@ def main() -> None:
             "check-codex-after-plan",
             "PreToolUse",
             triggered=True,
-            detail=f"plan_len={len(plan_text)}",
-            status="deduped",
+            detail=f"plan_len={len(plan_text)} (deduped)",
         )
         sys.exit(0)
 

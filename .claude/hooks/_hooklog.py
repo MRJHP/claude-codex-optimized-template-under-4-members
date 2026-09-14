@@ -61,7 +61,11 @@ def already_suggested(session_id: str, hook_name: str) -> bool:
     if not session_id:
         return False
 
-    REMINDER_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        REMINDER_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+
     marker = REMINDER_STATE_DIR / f"{session_id}__{hook_name}.marker"
     try:
         fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY)

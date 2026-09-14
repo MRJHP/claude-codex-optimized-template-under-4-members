@@ -38,8 +38,7 @@ def main() -> None:
             "post-implementation-review",
             "PostToolUse",
             triggered=True,
-            detail=file_path,
-            status="deduped",
+            detail=f"{file_path} (deduped)",
         )
         sys.exit(0)
 
