@@ -3,10 +3,9 @@
 
 세션 시작 시 다음을 '제안'만 한다 (차단 없음, 항상 exit 0):
 - `CHANGELOG.md` 최상단(가장 최근) 항목의 헤딩 — 지난 세션에서 마지막으로 무슨 작업을
-  왜 했는지 상기 (order-bridge/pc-manager/agent-visualizer-hub의 session-start-reminders.py와
-  같은 패턴. 이 템플릿은 VALIDATION_PLAN.md/reports/ 같은 프로젝트 전용 진행 기록 문서가
-  없어 항상 존재하는 CHANGELOG.md를 상기 대상으로 삼는다. `/init`으로 실제 프로젝트가 된 뒤에도
-  그대로 유효하다).
+  왜 했는지 상기. 이 템플릿에는 프로젝트 전용 진행 기록 문서(검증 계획서, reports/ 등)가 없어
+  항상 존재하는 CHANGELOG.md를 상기 대상으로 삼는다. `/init`으로 실제 프로젝트가 된 뒤에도
+  그대로 유효하다(프로젝트에 진행 기록 문서가 따로 있으면 그 문서를 상기 대상에 추가해도 된다).
 """
 
 import json

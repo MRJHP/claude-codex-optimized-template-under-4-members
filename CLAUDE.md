@@ -18,7 +18,7 @@ VS Code 내장 터미널의 Claude Code CLI 환경에서는 볼드 소제목/섹
 
 ## 항상 지켜야 할 규칙
 
-`.claude/rules/`에 정의된 6개 규칙은 모든 세션에서 항상 적용됩니다:
+`.claude/rules/`에 정의된 규칙(아래 표가 정본)은 모든 세션에서 항상 적용됩니다:
 
 | 파일 | 내용 |
 |---|---|
@@ -43,8 +43,16 @@ Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(�
 
 ## 자동 협업 Hook
 
-`.claude/hooks/`의 7개 Python hook은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py` 제외).
+`.claude/hooks/`의 Python hook(아래 표가 정본)은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py` 제외).
 실제로 Codex를 호출할지는 Claude가 상황을 보고 스스로 판단합니다.
+
+**제안 출력 방식(중요)**: 제안은 `hookSpecificOutput.additionalContext`로만 전달하고
+`permissionDecision`은 출력하지 않습니다. PreToolUse 훅이 `permissionDecision: "allow"`를 내면
+사용자 승인 없이 도구가 실행되는 권한 우회가 되고, 함께 낸 `permissionDecisionReason`은 Claude에게
+전달되지도 않습니다(2026-09-19 실험, Claude Code 2.1.278 — 훅 없음: 권한 필요 명령 거부 /
+`allow`: 승인 없이 실행·문구 미전달 / `additionalContext`만: 거부 유지·문구 전달).
+제안이 없으면 아무것도 출력하지 않고 종료합니다. 세션당 1회 dedup으로 억제된 호출은 로그에
+`status="working"`으로 남깁니다. 이 계약은 `tests/test_hooks.py`가 고정합니다.
 
 | Hook | 시점 | 역할 |
 |---|---|---|
@@ -58,9 +66,9 @@ Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(�
 
 ## 스킬
 
-이 프로젝트에는 스킬이 총 13개 있습니다 (`.claude/skills/` 아래 12개 + `.codex/skills/` 아래
-Codex 연계 문서 스킬 1개).
-자세한 목록은 [.claude/skills/codex-system/SKILL.md](.claude/skills/codex-system/SKILL.md)를 참고하세요.
+스킬은 `.claude/skills/`(Claude용)와 `.codex/skills/`(Codex 연계 문서 스킬)에 있으며, 목록은 두 폴더가
+정본입니다. Codex 연계 구조는 [.claude/skills/codex-system/SKILL.md](.claude/skills/codex-system/SKILL.md)를
+참고하세요.
 [harness-lab](.claude/skills/harness-lab/SKILL.md)은 코딩 외 반복 업무(리포트·체크리스트·문서 산출물)를
 Agent/Skill/Orchestrator/Test/Evolution 구조로 만드는 별도 스킬로, 기존 코딩 규칙과 별개로 동작합니다.
 
@@ -79,8 +87,9 @@ Codex는 MCP 서버로 등록하지 않는다(2026-09-12부터 — Codex CLI 0.1
 ## 품질 게이트
 
 - **CI**: `.github/workflows/ci.yml`이 push/PR마다 `ruff check`, `ruff format --check`, `mypy`, `pytest`를
-  실행합니다. `src/`, `tests/`에는 최소 예제(`src/project`, `tests/test_project.py`)가 포함되어 있어 항상
-  통과하며, `/init` 스킬로 실제 프로젝트로 바꿀 때 이 예제를 실제 코드로 교체합니다.
+  실행합니다. `src/`, `tests/`에는 최소 예제(`src/my_project`, `tests/test_my_project.py`)와 훅 회귀 테스트
+  (`tests/test_hooks.py`)가 포함되어 있어 항상 통과하며, `/init` 스킬로 실제 프로젝트로 바꿀 때
+  예제는 실제 코드로 교체합니다(훅 테스트는 유지).
 - **pre-commit**: `.pre-commit-config.yaml`에 ruff check/format, mypy가 로컬 hook으로 등록되어 있습니다.
   `uv run pre-commit install`로 최초 1회 활성화합니다 ([dev-environment.md](.claude/rules/dev-environment.md)).
 - **에디터**: `.vscode/settings.json`, `.vscode/extensions.json`으로 ruff/mypy 확장 및 저장 시 자동 포맷을

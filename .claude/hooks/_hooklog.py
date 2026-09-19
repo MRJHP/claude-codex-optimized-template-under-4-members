@@ -3,12 +3,15 @@
 각 hook은 자기 판단(제안할지 말지)을 내린 뒤 이 함수로 결과를 한 줄만 기록한다.
 로그는 차단/실패를 유발하면 안 되므로 쓰기 실패는 조용히 무시한다.
 
-`agent`/`status`는 agent-visualizer(하네스 이벤트를 실시간 시각화하는 별도 도구)가
-소비하는 필드다. 이 파일은 그 도구를 몰라도 되지만, 필드 이름은 계약으로 유지한다.
+`agent`/`status`는 로그를 읽는 외부 시각화 도구(하네스 이벤트 대시보드 등)가 소비하는
+필드다. 이 파일은 그 도구를 몰라도 되지만, 필드 이름(hook, event, triggered, detail, agent,
+status)과 status 값의 의미(flag/working/ok/fail 등)는 계약으로 유지한다.
 """
 
+import hashlib
 import json
 import os
+import sys
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,6 +19,20 @@ from typing import Any
 
 LOG_PATH = Path(__file__).resolve().parent.parent / "logs" / "hooks.jsonl"
 REMINDER_STATE_DIR = Path(tempfile.gettempdir()) / "claude-codex-hook-reminders"
+
+
+def read_hook_input() -> dict[str, Any]:
+    """훅 stdin(JSON)을 dict로 읽는다. 비었거나 깨졌거나 최상위가 객체가 아니면 빈 dict."""
+    try:
+        data = json.loads(sys.stdin.read() or "{}")
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def as_dict(value: object) -> dict[str, Any]:
+    """중첩 필드(tool_input 등)가 객체가 아니면 빈 dict — `.get()` 호출이 훅을 죽이지 않게 한다."""
+    return value if isinstance(value, dict) else {}
 
 
 def log_event(
@@ -66,7 +83,10 @@ def already_suggested(session_id: str, hook_name: str) -> bool:
     except OSError:
         return False
 
-    marker = REMINDER_STATE_DIR / f"{session_id}__{hook_name}.marker"
+    # session_id는 훅 입력(외부 값)이라 파일명에 그대로 쓰면 "../../x" 같은 값으로 마커 폴더 밖에
+    # 파일을 만들 수 있다 — (session_id, hook_name) 쌍의 해시만 파일명으로 쓴다.
+    digest = hashlib.sha256(json.dumps([session_id, hook_name]).encode()).hexdigest()[:40]
+    marker = REMINDER_STATE_DIR / f"{digest}.marker"
     try:
         fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         os.close(fd)

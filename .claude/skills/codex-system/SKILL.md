@@ -9,8 +9,8 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## 연결 방식
 
-- Codex는 Bash로 `codex exec --json`(신규 세션)/`codex exec resume <thread_id> --json`(같은 세션
-  이어가기)을 호출해 부른다(2026-09-12부터 — 이전에는 `mcp__codex__codex`/`mcp__codex__codex-reply`
+- Codex는 Bash로 `codex exec --json --sandbox read-only`(신규 세션)/`codex exec --sandbox read-only resume <thread_id> --json`
+  (같은 세션 이어가기 — `--sandbox`는 `resume` 앞)을 호출해 부른다(2026-09-12부터 — 이전에는 `mcp__codex__codex`/`mcp__codex__codex-reply`
   MCP 도구였으나 Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 전환).
 - `.claude/agents/general-purpose.md` 서브에이전트는 Bash 도구 권한을 가지고 있어, 조사 작업 중에도
   필요하면 Codex를 호출할 수 있다.
@@ -25,17 +25,21 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## Hook은 강제가 아니라 제안
 
-`.claude/hooks/`의 7개 hook은 전부 **차단하지 않는다** (`permissionDecision: allow` 또는 `additionalContext`만
-반환). 이 중 6개(`session-start-reminders.py`, `agent-router.py`, `check-codex-before-write.py`,
-`check-codex-after-plan.py`, `post-implementation-review.py`, `post-test-analysis.py`)는 Codex 위임을
-제안하거나 세션 시작 시 컨텍스트를 상기시키는 훅이고, `log-codex-call.py` 1개는 실제 Codex 호출이
-일어났을 때 그 사실을 로그로 남기는 훅이다. 즉:
+`.claude/hooks/`의 hook은 전부 **차단하지 않는다** (`additionalContext`로 제안만 하거나 로그만 남긴다).
+`session-start-reminders.py`, `agent-router.py`, `check-codex-before-write.py`,
+`check-codex-after-plan.py`, `post-implementation-review.py`, `post-test-analysis.py`는 Codex 위임을
+제안하거나 세션 시작 시 컨텍스트를 상기시키는 훅이고, `log-codex-call.py`는 실제 Codex 호출이
+일어났을 때 그 사실을 로그로 남기는 훅이다(전체 표는 [CLAUDE.md](../../../CLAUDE.md#자동-협업-hook)가 정본). 즉:
 
 - Hook이 "Codex 상담을 제안합니다"라고 메시지를 띄워도, 그 작업이 계속 진행된다.
 - Codex를 실제로 호출할지 말지는 Claude가 [codex-delegation.md](../../rules/codex-delegation.md) 기준으로
   스스로 판단한다.
-- Hook 로직을 더 엄격하게(차단형으로) 바꾸고 싶다면 각 hook의 `permissionDecision`을 `"ask"`나 `"deny"`로
-  바꾸면 된다.
+- 제안 훅은 `permissionDecision`을 출력하지 않는다. PreToolUse에서 `"allow"`를 내면 사용자 승인 없이
+  도구가 실행되는 권한 우회가 되고 사유 문구도 Claude에게 전달되지 않기 때문이다(근거는
+  [CLAUDE.md](../../../CLAUDE.md#자동-협업-hook)의 실험 결과).
+- Hook 로직을 더 엄격하게(차단형으로) 바꾸고 싶다면 그 hook에 `permissionDecision`을 `"ask"`나
+  `"deny"`로 **새로** 추가하고, 의도한 차단인지 `tests/test_hooks.py`의 계약 테스트
+  (`test_no_hook_source_emits_a_permission_decision`)도 함께 갱신한다.
 
 ## 언제 Codex를 부르나 (요약)
 

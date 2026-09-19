@@ -3,6 +3,38 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-09-20 (제안 훅의 권한 우회 수정 + 훅 회귀 테스트 + 문서 정정)
+
+- **`check-codex-before-write.py` / `check-codex-after-plan.py`가 `permissionDecision: "allow"`를
+  출력하던 결함 수정**: 임시 폴더에서 `claude -p`(2.1.278)로 세 경우를 대조 실험했다 — 훅 없음은
+  권한이 필요한 명령(`mkdir`)이 거부됨, `allow`+사유는 **승인 없이 실행되고 사유 문구는 Claude에게
+  전달되지 않음**, `additionalContext`만은 권한 흐름이 유지되고 문구가 전달됨. 즉 이 두 훅은 위험
+  경로 편집·ExitPlanMode(계획 승인)의 권한 확인을 건너뛰게 하면서 정작 제안은 전달하지 못하고
+  있었다. `permissionDecision`을 빼고 `additionalContext`만 출력하도록 고쳤다(다른 훅은 원래
+  `additionalContext` 방식). 근거 표는 `CLAUDE.md` "자동 협업 Hook" 절에 남겼다.
+- **`tests/test_hooks.py` 신설(훅 회귀 테스트)**: 권한 키 비출력 계약(모든 훅 소스
+  정적 검사 포함), 세션당 1회 dedup과 dedup 시 `status="working"`, 마커 디렉터리 생성 실패 시 훅 생존,
+  잘못된 stdin, `log-codex-call.py`의 호출 판별(heredoc 본문·`timeout`/`env`/`CODEX_HOME=` 접두어)과
+  thread_id 검증(glob 메타문자 거부). 그동안 훅에는 테스트가 없어 위 결함이 잡히지 않았다.
+- **`log-codex-call.py` 보강**: heredoc 프롬프트 본문의 짝 없는 따옴표로 `shlex`가 실패해 Codex 호출이
+  로그에서 누락되던 문제, `timeout 300 codex exec` 같은 접두어 미인식, Codex stdout에서 얻은
+  `thread_id`가 rollout 파일 glob 패턴에 그대로 들어가던 문제(16진수·하이픈만 허용)를 고쳤다.
+- **문서 정정**: 예제 경로 오기(`src/project` → `src/my_project`, `tests/test_project.py` →
+  `tests/test_my_project.py`)를 `CLAUDE.md`·`init` 스킬에서, 하드코딩된 개수("6개 규칙", "7개 hook",
+  "스킬 13개")를 표·폴더를 가리키는 서술로, `codex-system` 스킬의 `resume` 예시에 빠진
+  `--sandbox read-only`를 바로잡았다. `codex-delegation.md`에는 읽기 전용 프롬프트에 "테스트·스크립트
+  실행 금지"와 "민감 파일 패턴 제외·파일 목록 지정"을 명시하라는 지침을 추가했다(Codex가 디렉터리를
+  일괄 열람하다 gitignore된 토큰 파일을 읽은 사례에서 나온 규칙).
+- **Codex 사후 리뷰(읽기 전용, 2라운드) 지적 반영**: (1) `already_suggested()`가 훅 입력의 `session_id`를
+  마커 파일명에 그대로 써 `../../x` 같은 값으로 마커 폴더 밖에 파일을 만들 수 있던 것을,
+  `(session_id, hook_name)` 쌍의 해시를 파일명으로 쓰도록 바꿨다(마커 이름이 바뀌므로 업그레이드 직후 세션당
+  한 번은 제안이 다시 뜰 수 있다). (2) `[]`·`null`·`"text"`처럼 JSON으로는 유효하지만 객체가 아닌 입력이나
+  객체가 아닌 `tool_input`이 오면 `data.get()`이 `AttributeError`로 훅을 죽이던 것을 공용 헬퍼
+  (`_hooklog.read_hook_input()`/`as_dict()`)로 막았다. (3) `log-codex-call.py`가 `env -i`·`env -u VAR`·`env --`·
+  `env -C DIR`·`env -S '...'`·`env -a NAME`이 붙은 `codex exec`를 놓치거나(또는 `env -a codex exec`처럼
+  실행 파일이 아닌 값을 `codex`로 오인하던) 문제를 고쳤다. 모두 회귀 테스트로 고정했다.
+- 참고: 과거 항목의 `src/project` 표기는 당시 기록이라 그대로 둔다.
+
 ## 2026-09-14 (`AGENTS.md` 자동 로드 경로 버그 수정 + 훅 알림 피로 완화)
 
 - **`AGENTS.md`를 `.codex/AGENTS.md`에서 저장소 루트로 이동**: Codex CLI 공식 문서

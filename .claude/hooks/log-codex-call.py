@@ -2,7 +2,7 @@
 """PreToolUse/PostToolUse/PostToolUseFailure hook (matcher: Bash).
 
 Claude가 실제로 Codex를 호출하는 순간(제안이 아니라 실제 `codex exec` 실행)을 기록한다.
-차단하지 않으며, 로그만 남긴다. agent-visualizer가 이 이벤트로 "Codex가 리뷰
+차단하지 않으며, 로그만 남긴다. 로그를 읽는 시각화 도구가 이 이벤트로 "Codex가 리뷰
 중"/"리뷰 완료" 상태와 토큰 사용량을 그린다.
 
 2026-09-12: Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 `mcp__codex__codex` MCP 도구
@@ -16,11 +16,14 @@ Claude가 실제로 Codex를 호출하는 순간(제안이 아니라 실제 `cod
 보장하는 게 아니므로, 오탐/누락이 있어도 Codex 호출 자체에는 영향이 없다. 정확한 판별이
 필요해지면(예: 과금 근거로 쓰는 경우) 공통 wrapper 스크립트로 옮기는 편이 낫다.
 
-agent-visualizer의 Codex 쪽 캐릭터는 codex-detective 하나다(예전엔 탐정/보안 리뷰어/
-퍼포먼스 리뷰어 3명으로 나눴었는데, 실제 로그를 보니 security/perf는 한 번도 발동한 적이
-없어 늘 흑백으로 서 있기만 했다 — 2026-08-04 하나로 합침). Codex에게 보낸 prompt
-내용으로 리뷰가 보안/퍼포먼스 중점이었는지는 여전히 추정하되, 캐릭터를 나누는 대신
-detail(말풍선/카드/로그에 그대로 노출됨)에 표시만 남긴다.
+Codex 호출의 `agent` 값은 항상 `codex-detective` 하나로 고정한다. Codex에게 보낸 prompt
+내용으로 리뷰가 보안/퍼포먼스 중점이었는지는 추정하되, agent를 나누는 대신 detail에 표시만
+남긴다.
+
+판별 범위 (테스트로 고정): heredoc 본문(프롬프트)은 판별에서 제외하고(본문의 짝 없는 따옴표
+때문에 shlex가 실패하지 않도록), `CODEX_HOME=... codex exec`·`timeout 300 codex exec` 같은 접두어는
+건너뛰고 판별한다. stdout에서 얻은 thread_id는 16진수·하이픈만 허용하고 그 외에는 무시한다
+(rollout 파일 glob 패턴에 그대로 쓰이므로).
 
 토큰 사용량 출처: `codex exec`의 stdout(`--json` 필수)에서 `{"type":"thread.started",
 "thread_id":...}` 이벤트로 thread_id를 얻는다. 사용량 자체(총합/컨텍스트 윈도우 한도 포함)는
@@ -37,7 +40,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from _hooklog import log_event
+from _hooklog import as_dict, log_event, read_hook_input
 
 # rollout 파일에 model_context_window가 없는 극히 드문 경우에만 쓰는 최후의 대체값.
 CONTEXT_LIMIT_FALLBACK = 128_000
@@ -77,6 +80,82 @@ _SEGMENT_SPLIT = re.compile(r"&&|\|\||;|\|")
 
 CODEX_EXECUTABLE_BASENAMES = {"codex", "codex.cmd", "codex.exe"}
 
+# heredoc 시작 마커(`<<EOF`, `<<-EOF`, `<<'EOF'`, `<< "EOF"`). here-string(`<<<`)은 제외한다.
+_HEREDOC_START = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+_ENV_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# timeout이 값을 따로 받는 옵션 (`--signal=KILL`처럼 `=`로 붙인 형태는 토큰 하나라 해당 없음).
+_TIMEOUT_VALUE_OPTIONS = {"-s", "--signal", "-k", "--kill-after"}
+_THREAD_ID_PATTERN = re.compile(r"[0-9a-fA-F-]+")
+# env가 값을 따로 받는 옵션 (`--unset=VAR`처럼 `=`로 붙인 형태는 토큰 하나라 해당 없음).
+_ENV_VALUE_OPTIONS = {"-u", "--unset", "-C", "--chdir", "-a", "--argv0"}
+# `env -S "codex exec ..."`는 값 하나가 명령 전체(공백 분리 문자열)다 — 풀어서 다시 판별한다.
+_ENV_SPLIT_OPTIONS = {"-S", "--split-string"}
+
+
+def strip_heredoc_bodies(command: str) -> str:
+    """heredoc 본문(프롬프트)과 here-string 인자를 명령 문자열에서 제거한다.
+
+    codex-delegation.md가 권장하는 `codex exec ... - <<'CODEX_PROMPT'` 형태에서 프롬프트 본문에
+    짝 없는 따옴표(예: don't)가 있으면 shlex.split이 실패해 Codex 호출이 로그에서 누락되므로,
+    판별 전에 본문을 걷어낸다. 마커가 있는 줄의 나머지(`| tail` 등)와 종결자 이후 줄은 남긴다.
+    """
+    kept: list[str] = []
+    delimiter: str | None = None
+    for line in command.split("\n"):
+        if delimiter is not None:
+            if line.strip() == delimiter:
+                delimiter = None
+            continue
+        here_string = line.find("<<<")
+        if here_string != -1:
+            line = line[:here_string]
+        match = _HEREDOC_START.search(line)
+        if match:
+            delimiter = match.group(2)
+            line = f"{line[: match.start()]} {line[match.end() :]}"
+        kept.append(line)
+    return "\n".join(kept)
+
+
+def _skip_command_prefix(tokens: list[str]) -> list[str]:
+    """`FOO=bar`·`env`·`timeout <옵션> <시간>` 접두어를 건너뛴 나머지 토큰을 반환한다."""
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        program = token.replace("\\", "/").rsplit("/", 1)[-1]
+        if _ENV_ASSIGNMENT.match(token):
+            index += 1
+        elif program == "env":
+            index += 1
+            # `env -i FOO=1 codex exec`, `env -u VAR codex exec`, `env -- FOO=1 codex exec`처럼
+            # env 자신의 옵션(과 그 값)을 건너뛴다. 뒤따르는 FOO=bar는 다음 반복이 처리한다.
+            while index < len(tokens) and tokens[index].startswith("-") and tokens[index] != "-":
+                option = tokens[index]
+                if option == "--":
+                    index += 1
+                    break
+                if option in _ENV_SPLIT_OPTIONS or option.startswith("--split-string="):
+                    if option in _ENV_SPLIT_OPTIONS:
+                        if index + 1 >= len(tokens):
+                            return []
+                        value, rest = tokens[index + 1], tokens[index + 2 :]
+                    else:
+                        value, rest = option.split("=", 1)[1], tokens[index + 1 :]
+                    try:
+                        expanded = shlex.split(value)
+                    except ValueError:
+                        return []
+                    return _skip_command_prefix(expanded + rest)
+                index += 2 if option in _ENV_VALUE_OPTIONS else 1
+        elif program == "timeout":
+            index += 1
+            while index < len(tokens) and tokens[index].startswith("-"):
+                index += 2 if tokens[index] in _TIMEOUT_VALUE_OPTIONS else 1
+            index += 1  # 제한 시간(예: 300, 5m)
+        else:
+            break
+    return tokens[index:]
+
 
 def _segment_starts_with_codex_exec(segment: str) -> bool:
     try:
@@ -84,6 +163,7 @@ def _segment_starts_with_codex_exec(segment: str) -> bool:
     except ValueError:
         # 따옴표가 안 맞는 등 파싱 불가한 조각은 판단하지 않는다(오탐보다 누락이 안전).
         return False
+    tokens = _skip_command_prefix(tokens)
     if not tokens:
         return False
     program = tokens[0].replace("\\", "/").rsplit("/", 1)[-1]
@@ -97,8 +177,11 @@ def is_codex_exec_command(command: str) -> bool:
 
     `echo "codex exec"`, `rg "codex exec" .`처럼 문자열만 언급한 경우는 shlex가 인용된
     "codex exec"를 토큰 하나로 묶어버려 첫 토큰이 "codex"가 되지 않으므로 걸러진다.
-    `codex -c x=1 exec ...`처럼 전역 옵션이 subcommand 앞에 오는 경우는 잡아낸다.
+    `codex -c x=1 exec ...`처럼 전역 옵션이 subcommand 앞에 오는 경우, `CODEX_HOME=... codex exec`·
+    `timeout 300 codex exec` 같은 접두어가 붙은 경우, heredoc 프롬프트 본문에 짝 없는 따옴표가
+    있는 경우도 잡아낸다.
     """
+    command = strip_heredoc_bodies(command)
     return any(_segment_starts_with_codex_exec(seg) for seg in _SEGMENT_SPLIT.split(command))
 
 
@@ -127,6 +210,9 @@ def codex_home() -> Path:
 
 
 def find_rollout_file(thread_id: str) -> Path | None:
+    # thread_id는 외부(Codex stdout)에서 온 값이고 glob 패턴에 그대로 들어가므로 형식을 검증한다.
+    if not _THREAD_ID_PATTERN.fullmatch(thread_id):
+        return None
     sessions_dir = codex_home() / "sessions"
     if not sessions_dir.exists():
         return None
@@ -160,16 +246,18 @@ def extract_thread_id(events: list[dict[str, Any]]) -> str | None:
 
     출력에 서로 다른 thread_id가 두 개 이상 섞여 있으면(여러 호출이 파이프 등으로 뒤섞인 경우)
     어느 쪽 사용량인지 확신할 수 없으므로 귀속시키지 않는다(None 반환 — usage는 생략되지만
-    호출 자체의 성공/실패 로그는 남는다).
+    호출 자체의 성공/실패 로그는 남는다). 유일한 thread_id라도 16진수·하이픈 형식이 아니면
+    (rollout 파일 glob 패턴에 쓰이므로) 무시한다.
     """
     ids = {
         str(e["thread_id"])
         for e in events
         if e.get("type") == "thread.started" and e.get("thread_id")
     }
-    if len(ids) == 1:
-        return next(iter(ids))
-    return None
+    if len(ids) != 1:
+        return None
+    thread_id = next(iter(ids))
+    return thread_id if _THREAD_ID_PATTERN.fullmatch(thread_id) else None
 
 
 def has_turn_completed(events: list[dict[str, Any]]) -> bool:
@@ -215,13 +303,10 @@ def extract_usage(thread_id: str) -> dict[str, Any] | None:
 
 
 def main() -> None:
-    try:
-        data = json.loads(sys.stdin.read() or "{}")
-    except json.JSONDecodeError:
-        data = {}
+    data = read_hook_input()
 
     hook_event = str(data.get("hook_event_name", ""))
-    tool_input = data.get("tool_input", {}) or {}
+    tool_input = as_dict(data.get("tool_input"))
     command = str(tool_input.get("command", ""))
 
     if not is_codex_exec_command(command):
@@ -240,7 +325,7 @@ def main() -> None:
         )
         sys.exit(0)
 
-    tool_response = data.get("tool_response", {}) or {}
+    tool_response = as_dict(data.get("tool_response"))
     stdout = str(tool_response.get("stdout", ""))
 
     # 실패/중단 판정: PostToolUseFailure는 hook_event 자체가 알려주고, Bash 도구는 중단 시

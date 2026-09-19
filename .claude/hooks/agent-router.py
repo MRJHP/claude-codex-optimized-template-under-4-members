@@ -8,7 +8,7 @@
 import json
 import sys
 
-from _hooklog import log_event
+from _hooklog import log_event, read_hook_input
 
 SKILL_HINTS = [
     (("새 프로젝트", "프로젝트 시작", "새로 시작"), "startproject"),
@@ -26,10 +26,7 @@ SKILL_HINTS = [
 
 
 def main() -> None:
-    try:
-        data = json.loads(sys.stdin.read() or "{}")
-    except json.JSONDecodeError:
-        data = {}
+    data = read_hook_input()
 
     prompt = str(data.get("prompt", "")).lower()
     matched = [skill for keywords, skill in SKILL_HINTS if any(k in prompt for k in keywords)]

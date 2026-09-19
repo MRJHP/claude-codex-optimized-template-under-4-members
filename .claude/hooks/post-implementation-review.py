@@ -7,7 +7,7 @@
 import json
 import sys
 
-from _hooklog import already_suggested, log_event
+from _hooklog import already_suggested, as_dict, log_event, read_hook_input
 from _risk_keywords import RISK_PATH_KEYWORDS
 
 
@@ -19,12 +19,9 @@ def is_risky(file_path: str, content: str) -> bool:
 
 
 def main() -> None:
-    try:
-        data = json.loads(sys.stdin.read() or "{}")
-    except json.JSONDecodeError:
-        data = {}
+    data = read_hook_input()
 
-    tool_input = data.get("tool_input", {}) or {}
+    tool_input = as_dict(data.get("tool_input"))
     file_path = str(tool_input.get("file_path", ""))
     content = str(tool_input.get("content", "") or tool_input.get("new_string", ""))
     session_id = str(data.get("session_id", ""))
@@ -34,11 +31,15 @@ def main() -> None:
         sys.exit(0)
 
     if already_suggested(session_id, "post-implementation-review"):
+        # 이번 호출은 아무 메시지도 출력하지 않으므로(알림 피로 억제) status를 기본값 "flag"
+        # (제안됨)가 아니라 "working"으로 남겨, 시각화가 실제로 일어나지 않은 제안을 반복 표시하지
+        # 않게 한다.
         log_event(
             "post-implementation-review",
             "PostToolUse",
             triggered=True,
             detail=f"{file_path} (deduped)",
+            status="working",
         )
         sys.exit(0)
 

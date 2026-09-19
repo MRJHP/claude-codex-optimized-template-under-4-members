@@ -8,7 +8,7 @@ import json
 import re
 import sys
 
-from _hooklog import log_event
+from _hooklog import as_dict, log_event, read_hook_input
 
 # 줄 시작 기준으로 매칭해 테스트 이름/로그 문구에 "failed"가 우연히 포함된 경우의 오탐을 줄인다
 # (예: test_login_failed_when_wrong_password).
@@ -22,17 +22,14 @@ FAILURE_PATTERNS = (
 
 
 def main() -> None:
-    try:
-        data = json.loads(sys.stdin.read() or "{}")
-    except json.JSONDecodeError:
-        data = {}
+    data = read_hook_input()
 
-    tool_input = data.get("tool_input", {}) or {}
+    tool_input = as_dict(data.get("tool_input"))
     command = str(tool_input.get("command", ""))
     if "pytest" not in command:
         sys.exit(0)
 
-    tool_response = data.get("tool_response", {}) or {}
+    tool_response = as_dict(data.get("tool_response"))
     output = str(tool_response.get("stdout", "")) + str(tool_response.get("stderr", ""))
 
     if not any(pattern.search(output) for pattern in FAILURE_PATTERNS):
