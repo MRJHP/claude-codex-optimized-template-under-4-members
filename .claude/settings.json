@@ -51,7 +51,17 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": "mcp__codex__codex",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -X utf8 .claude/hooks/codex-disable-plugins.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__codex__.*",
         "hooks": [
           {
             "type": "command",
@@ -80,7 +90,7 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": "mcp__codex__.*",
         "hooks": [
           {
             "type": "command",
@@ -91,7 +101,7 @@
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "Bash",
+        "matcher": "mcp__codex__.*",
         "hooks": [
           {
             "type": "command",

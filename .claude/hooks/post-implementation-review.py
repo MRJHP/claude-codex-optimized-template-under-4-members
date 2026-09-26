@@ -46,7 +46,7 @@ def main() -> None:
     log_event("post-implementation-review", "PostToolUse", triggered=True, detail=file_path)
     suggestion = (
         f"[post-implementation-review] '{file_path}' 변경이 완료되었습니다. "
-        "민감한 영역이므로 Bash로 codex exec를 호출해 Codex에게 리뷰를 받아볼 것을 "
+        "민감한 영역이므로 MCP 도구 mcp__codex__codex를 호출해 Codex에게 리뷰를 받아볼 것을 "
         "제안합니다 (강제 아님)."
     )
     print(

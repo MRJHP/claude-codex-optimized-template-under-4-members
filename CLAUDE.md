@@ -13,7 +13,7 @@ VS Code 내장 터미널의 Claude Code CLI 환경에서는 볼드 소제목/섹
 ## 협업 구조
 
 - **Claude Code**: 오케스트레이터 + 리서치. 요구사항 파악, 계획 수립, 코드 작성, WebSearch를 통한 리서치를 담당합니다.
-- **Codex CLI**: 리뷰 전담. Bash로 `codex exec`를 호출해 Claude가 직접 부르며, 구현 전 상담·구현 후 리뷰·막혔을 때 세컨드 오피니언 역할을 합니다(2026-09-12부터 — 이전에는 `mcp__codex__codex` MCP 도구였으나 Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 전환).
+- **Codex CLI**: 리뷰 전담. MCP 도구 `mcp__codex__codex`(이어가기 `mcp__codex__codex-reply`)로 Claude가 직접 부르며, 구현 전 상담·구현 후 리뷰·막혔을 때 세컨드 오피니언 역할을 합니다(2026-09-26부터 — 2026-09-12~09-25는 Bash `codex exec` 직접 호출이었으나 MCP `codex`를 기본이자 유일한 경로로 되돌리고 exec 경로는 삭제).
 - 역할 분담의 세부 기준은 [.claude/rules/codex-delegation.md](.claude/rules/codex-delegation.md)를 따릅니다.
 
 ## 항상 지켜야 할 규칙
@@ -43,8 +43,9 @@ Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(�
 
 ## 자동 협업 Hook
 
-`.claude/hooks/`의 Python hook(아래 표가 정본)은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py` 제외).
-실제로 Codex를 호출할지는 Claude가 상황을 보고 스스로 판단합니다.
+`.claude/hooks/`의 Python hook(아래 표가 정본)은 **차단 없이 제안/기록만 출력**합니다 (`log-codex-call.py`는
+기록만, `codex-disable-plugins.py`는 예외적으로 입력을 고치고 이상 입력은 차단). 실제로 Codex를 호출할지는
+Claude가 상황을 보고 스스로 판단합니다.
 
 **제안 출력 방식(중요)**: 제안은 `hookSpecificOutput.additionalContext`로만 전달하고
 `permissionDecision`은 출력하지 않습니다. PreToolUse 훅이 `permissionDecision: "allow"`를 내면
@@ -62,7 +63,8 @@ Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(�
 | check-codex-after-plan.py | 계획 확정 후 | Codex에게 계획 리뷰를 받을지 제안 |
 | post-implementation-review.py | 구현 후 | Codex 코드 리뷰 제안 |
 | post-test-analysis.py | 테스트 실행 후 | 테스트 실패 시 Codex 원인 분석 제안 |
-| log-codex-call.py | `codex exec` Bash 호출 전/후 | 실제 Codex 호출 시작/종료를 기록 (제안이 아니라 실호출 로그) |
+| codex-disable-plugins.py | `mcp__codex__codex` 호출 직전 | `sandbox=read-only`·`approval-policy=never`와 Codex 플러그인·`node_repl` 차단 `config`를 강제 (`updatedInput`, 이상 입력은 종료 코드 2로 차단 — fail-closed) |
+| log-codex-call.py | `mcp__codex__*` 호출 전/후/실패 | 실제 Codex 호출 시작/종료와 토큰 사용량을 기록 (제안이 아니라 실호출 로그) |
 
 ## 스킬
 
@@ -79,10 +81,12 @@ Agent/Skill/Orchestrator/Test/Evolution 구조로 만드는 별도 스킬로, �
 2026-09-14 정정), `.codex/skills/context-loader/`는 Codex가 `.claude/` 아래의 규칙·설계 문서를 동일하게
 로드하도록 안내합니다.
 
-Codex는 MCP 서버로 등록하지 않는다(2026-09-12부터 — Codex CLI 0.154.0에서 `codex mcp-server`가
-삭제됨). 대신 Claude가 Bash로 `codex exec`를 직접 호출한다([codex-delegation.md](.claude/rules/codex-delegation.md)
-참고). 로컬에 Codex CLI가 설치돼 있고 각자 자기 계정으로 `codex login`을 한 번 실행해야 한다
-(자세한 절차는 [README.md](README.md) "시작하기" 참고).
+Codex는 `.mcp.json`에 프로젝트 MCP 서버로 등록돼 있다(`npx -y @openai/codex@0.153.4 mcp-server` —
+`codex mcp-server`가 Codex CLI 0.154.0에서 삭제돼 마지막 지원 버전을 고정). 저장소를 클론하면
+`mcp__codex__codex`·`mcp__codex__codex-reply` 도구가 바로 생기며, 각자 자기 계정으로 로그인
+(`npx -y @openai/codex@0.153.4 login`)을 한 번 실행해야 한다(OS별 `command` 조정과 절차는
+[README.md](README.md) "시작하기" 참고). Codex 호출 경로는 이 MCP 도구뿐이며 Bash `codex exec` 같은
+다른 방식은 쓰지 않는다. 호출 규칙은 [codex-delegation.md](.claude/rules/codex-delegation.md).
 
 ## 품질 게이트
 

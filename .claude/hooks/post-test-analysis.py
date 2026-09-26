@@ -41,7 +41,7 @@ def main() -> None:
     log_event("post-test-analysis", "PostToolUse", triggered=True, detail="pytest", status="fail")
     suggestion = (
         "[post-test-analysis] pytest 실행이 실패한 것으로 보입니다. "
-        "같은 실패를 2회 이상 반복해서 해결하지 못했다면 Bash로 codex exec를 호출해 "
+        "같은 실패를 2회 이상 반복해서 해결하지 못했다면 MCP 도구 mcp__codex__codex를 호출해 "
         "Codex에게 실패 로그와 관련 코드를 공유하고 원인 분석을 요청할 것을 제안합니다 (강제 아님)."
     )
     print(

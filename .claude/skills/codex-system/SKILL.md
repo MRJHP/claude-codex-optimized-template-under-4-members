@@ -9,11 +9,13 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## 연결 방식
 
-- Codex는 Bash로 `codex exec --json --sandbox read-only`(신규 세션)/`codex exec --sandbox read-only resume <thread_id> --json`
-  (같은 세션 이어가기 — `--sandbox`는 `resume` 앞)을 호출해 부른다(2026-09-12부터 — 이전에는 `mcp__codex__codex`/`mcp__codex__codex-reply`
-  MCP 도구였으나 Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 전환).
-- `.claude/agents/general-purpose.md` 서브에이전트는 Bash 도구 권한을 가지고 있어, 조사 작업 중에도
-  필요하면 Codex를 호출할 수 있다.
+- Codex는 `.mcp.json`에 프로젝트 MCP 서버로 등록돼 있고(`npx -y @openai/codex@0.153.4 mcp-server`),
+  `mcp__codex__codex`(신규 세션)/`mcp__codex__codex-reply`(같은 세션 이어가기, `threadId` 필요) 도구로
+  부른다(2026-09-26부터 — 2026-09-12~09-25는 Bash `codex exec` 직접 호출이었다).
+- `codex-disable-plugins.py` 훅이 `mcp__codex__codex` 호출마다 `sandbox=read-only`·
+  `approval-policy=never`·플러그인 차단 `config`를 강제한다. 호출할 때도 두 값을 직접 적는다.
+- `.claude/agents/general-purpose.md` 서브에이전트는 `mcp__codex__codex`·`mcp__codex__codex-reply` 도구
+  권한을 가지고 있어, 조사 작업 중에도 필요하면 Codex를 호출할 수 있다.
 - `.claude/agents/pm.md` 서브에이전트는 작업 분해·진행 상황 추적을 전담한다. 코드를 직접 쓰지 않고,
   CHANGELOG.md/git log/DESIGN.md를 근거로 언제 Codex 상담이 필요한지 판단 근거를 정리해서 메인
   오케스트레이터에게 반환한다.
@@ -29,7 +31,9 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 `session-start-reminders.py`, `agent-router.py`, `check-codex-before-write.py`,
 `check-codex-after-plan.py`, `post-implementation-review.py`, `post-test-analysis.py`는 Codex 위임을
 제안하거나 세션 시작 시 컨텍스트를 상기시키는 훅이고, `log-codex-call.py`는 실제 Codex 호출이
-일어났을 때 그 사실을 로그로 남기는 훅이다(전체 표는 [CLAUDE.md](../../../CLAUDE.md#자동-협업-hook)가 정본). 즉:
+일어났을 때 그 사실을 로그로 남기는 훅이다(전체 표는 [CLAUDE.md](../../../CLAUDE.md#자동-협업-hook)가 정본).
+예외는 `codex-disable-plugins.py` 하나로, 제안이 아니라 `mcp__codex__codex`의 입력을 읽기 전용으로
+고쳐 쓰는(`updatedInput`) 훅이며 입력이 이상하면 호출을 막는다(fail-closed). 즉:
 
 - Hook이 "Codex 상담을 제안합니다"라고 메시지를 띄워도, 그 작업이 계속 진행된다.
 - Codex를 실제로 호출할지 말지는 Claude가 [codex-delegation.md](../../rules/codex-delegation.md) 기준으로
@@ -48,12 +52,14 @@ description: Codex CLI 연계 구조를 자세히 설명한다. Codex를 언제/
 
 ## 좋은 위임 예시
 
-```bash
-codex exec --json --sandbox read-only - <<'CODEX_PROMPT'
-다음 함수가 동시성 환경에서 안전한지 검토해줘. 파일: src/cache.py:42-70 (아래 첨부).
-이미 lock을 추가하는 방법을 고려했지만 성능 저하가 우려돼서 보류했어.
-락 없이 안전하게 만들 방법이 있는지, 혹은 락이 불가피한지 판단해줘.
-CODEX_PROMPT
+`mcp__codex__codex` 도구 호출 인자:
+
+```json
+{
+  "sandbox": "read-only",
+  "approval-policy": "never",
+  "prompt": "다음 함수가 동시성 환경에서 안전한지 검토해줘. 파일: src/cache.py:42-70 (아래 첨부).\n이미 lock을 추가하는 방법을 고려했지만 성능 저하가 우려돼서 보류했어.\n락 없이 안전하게 만들 방법이 있는지, 혹은 락이 불가피한지 판단해줘.\n파일 수정·생성·삭제와 테스트·스크립트 실행은 금지. git status/diff/log는 허용."
+}
 ```
 
-(프롬프트를 `"..."`로 셸 인용하지 않는 이유는 [codex-delegation.md](../../rules/codex-delegation.md) 참고.)
+이어서 물을 때는 응답의 `threadId`로 `mcp__codex__codex-reply`를 호출한다.

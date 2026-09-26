@@ -1,29 +1,31 @@
 # Codex 위임 규칙
 
-**2026-09-12 변경**: Codex CLI 0.154.0에서 `codex mcp-server`가 삭제되며 `mcp__codex__codex` MCP 도구
-자체가 사라졌다. Codex는 이제 **Bash로 `codex exec`를 직접 호출**한다.
+**호출 경로 (2026-09-26 변경)**: Codex 호출의 기본이자 유일한 경로는 **MCP `codex`** 도구다. Bash
+`codex exec` 경로와 그 명령 판별 훅 로직은 삭제했다(경위는 [CHANGELOG.md](../../CHANGELOG.md)). MCP
+서버는 `.mcp.json`에 프로젝트 단위로 등록돼 있다(`npx -y @openai/codex@0.153.4 mcp-server` —
+`codex mcp-server`는 Codex CLI 0.154.0에서 삭제돼 마지막 지원 버전을 고정한 것).
 
-- 신규 세션: `codex exec --json --sandbox read-only - <<'CODEX_PROMPT' ... CODEX_PROMPT`
-  (heredoc으로 stdin에 프롬프트를 넣는다. `-`는 "stdin에서 읽어라"는 뜻이다.)
-- 기존 세션 이어가기: `codex exec --sandbox read-only resume <thread_id> --json - <<'CODEX_PROMPT' ... CODEX_PROMPT`
-  (`--sandbox`는 `resume` **앞**에 온다 — `exec`의 옵션이지 `resume`의 옵션이 아니다. `thread_id`는
-  직전 호출의 `--json` 출력 중 `{"type":"thread.started","thread_id":"..."}` 이벤트에서 얻는다.)
-- **프롬프트를 `"..."`로 셸 인용해 인자로 넘기지 않는다.** 코드/diff에 백틱이나 `$()`가 섞여 있으면
-  Codex의 sandbox가 시작되기도 전에 Bash가 먼저 실행해버릴 수 있다([security.md](security.md) 셸
-  인젝션 금지 원칙과 동일한 이유). 항상 heredoc(따옴표로 감싼 구분자, 예: `<<'CODEX_PROMPT'`)으로
-  stdin에 전달한다.
-- 파일을 고치지 않는 상담·리뷰에는 `--sandbox read-only`를 기본값으로 쓴다. 이 프로젝트의 Codex
-  역할은 "리뷰 전담"이므로 `workspace-write`가 필요한 상황은 사실상 없다.
-- `--json`을 빼먹지 않는다 — `log-codex-call.py`가 stdout의 JSONL 이벤트로 진행 상태와 토큰 사용량을
-  집계해 agent-visualizer에 반영한다([자동 협업 Hook](../../CLAUDE.md#자동-협업-hook) 참고). 다만 이
-  hook의 호출 판별·파싱은 명령 문자열 패턴 매칭에 의존하는 한계가 있다(오탐/누락 가능) — 실패해도
-  Codex 호출 자체는 막히지 않고 대시보드 집계만 부정확해질 수 있다.
+- 신규 세션: `mcp__codex__codex` 도구를 `prompt`, `sandbox: "read-only"`, `approval-policy: "never"`로
+  호출한다. 응답의 `threadId`를 기억해 둔다.
+- 기존 세션 이어가기: `mcp__codex__codex-reply` 도구를 `threadId`, `prompt`로 호출한다. 세션 시작 때의
+  설정(read-only·never·플러그인 없음)을 그대로 이어받는다.
+- **읽기 전용은 훅이 강제한다.** MCP `codex`는 `sandbox`를 생략하면 `workspace-write`·`on-request`로
+  열려 "리뷰 전담" 역할과 충돌하므로, `codex-disable-plugins.py`(PreToolUse, matcher
+  `mcp__codex__codex`)가 호출마다 `sandbox=read-only`·`approval-policy=never`와 Codex 자체
+  플러그인·`node_repl` 차단 `config`를 덮어쓴다(사용자가 넘긴 다른 `config`는 유지). 입력이 이상하면
+  종료 코드 2로 호출을 막는다(fail-closed). 훅 프로세스 자체가 못 뜨는 경우(python 없음·시간 초과)는
+  막지 못하므로 **호출할 때도 `sandbox`·`approval-policy`를 직접 적는다.**
+- `log-codex-call.py`(matcher `mcp__codex__.*`)가 호출 시작/종료와 토큰 사용량(Codex 세션 rollout
+  파일 기준)을 기록해 agent-visualizer에 반영한다([자동 협업 Hook](../../CLAUDE.md#자동-협업-hook)
+  참고). 실패해도 Codex 호출 자체는 막히지 않고 대시보드 집계만 빠질 수 있다.
+- 알려진 한계: MCP 서버가 공식적으로 삭제된 방식(`0.153.4` 고정 `npx`)이라 npm에서 그 버전이
+  내려가면 호출이 실패한다. 그때는 임의로 다른 경로로 우회하지 말고 사용자에게 알린다.
 
 아래 규칙과 `.claude/hooks/`의 제안은 **강제가 아니라 판단 기준**이다. 실제 호출 여부는 상황에 맞게
 Claude가 결정한다.
 
 **사전 승인된 자율 판단**: 사용자는 Codex와의 지속적인 협업을 이미 승인했다. Claude는 아래 기준에
-따라 위임이 필요하다고 판단되면 **매번 사용자에게 물어보지 않고** 바로 위 명령으로 `codex exec`를
+따라 위임이 필요하다고 판단되면 **매번 사용자에게 물어보지 않고** 바로 위 도구로 Codex를
 호출한다. 반대로 위임이 불필요하다고 판단되면(아래 "위임하지 않아도 되는 경우") 그 이유를 간단히
 밝히고 넘어가면 되며, 이 역시 사용자 확인을 기다릴 필요가 없다. 다만 Codex 호출 자체가 아니라 그
 결과를 코드에 반영하는 작업(파일 수정, 커밋 등)은 이 규칙과 별개로 프로젝트의 다른 안전 수칙(예:
@@ -66,7 +68,7 @@ Codex는 이 대화의 맥락을 모르는 상태로 시작한다. 위임 프롬
 - 이미 시도했거나 배제한 접근
 - 원하는 응답 형태 (예: "200자 이내로 안전한지 아닌지만 판단해줘")
 
-읽기 전용(`--sandbox read-only`) 리뷰·상담 프롬프트에는 아래 두 가지도 명시한다:
+읽기 전용(`sandbox: read-only`) 리뷰·상담 프롬프트에는 아래 두 가지도 명시한다:
 - **테스트·스크립트 실행 금지**. "파일 수정·생성·삭제 금지"만 적으면 Codex가 `uv run pytest`처럼
   환경을 동기화하거나 파일을 만들 수 있는 명령을 시도한다(샌드박스가 막아 실패하더라도 시도 자체가
   낭비다). `git status/diff/log` 같은 읽기 명령은 허용한다고 함께 적는다.

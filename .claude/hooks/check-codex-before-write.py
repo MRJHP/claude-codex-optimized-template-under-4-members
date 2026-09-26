@@ -51,8 +51,8 @@ def main() -> None:
     log_event("check-codex-before-write", "PreToolUse", triggered=True, detail=file_path)
     suggestion = (
         f"[check-codex-before-write] '{file_path}'은(는) 민감하거나 규모가 큰 변경으로 보입니다. "
-        "구현 전에 Bash로 codex exec를 호출해 Codex에게 접근 방식을 상담해볼 것을 제안합니다 "
-        "(강제 아님, .claude/rules/codex-delegation.md 기준 참고)."
+        "구현 전에 MCP 도구 mcp__codex__codex를 호출해 Codex에게 접근 방식을 상담해볼 것을 "
+        "제안합니다 (강제 아님, .claude/rules/codex-delegation.md 기준 참고)."
     )
     print(
         json.dumps(

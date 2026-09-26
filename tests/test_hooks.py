@@ -10,6 +10,10 @@
   `additionalContext`로만 전달한다.
 - 세션당 1회 dedup: 두 번째부터는 아무것도 출력하지 않고, 로그에는 `status="working"`으로
   남긴다(기본값 `flag`면 시각화가 실제로 일어나지 않은 제안을 반복 표시한다).
+- `codex-disable-plugins`는 `mcp__codex__codex` 호출마다 `sandbox=read-only`·
+  `approval-policy=never`와 플러그인·`node_repl` 차단 `config`를 강제하고, 입력이 이상하면
+  종료 코드 2로 호출을 막는다(fail-closed).
+- `log-codex-call`은 `mcp__codex__*` 도구 호출만 기록하고, 그 외 입력에는 아무것도 하지 않는다.
 """
 
 import importlib
@@ -110,7 +114,7 @@ def test_pretooluse_hook_suggests_via_additional_context_only(
     assert output is not None
     specific = output["hookSpecificOutput"]
     assert specific["hookEventName"] == "PreToolUse"
-    assert "codex exec" in specific["additionalContext"]
+    assert "mcp__codex__codex" in specific["additionalContext"]
     assert not find_key(output, "permissionDecision")
     assert not find_key(output, "permissionDecisionReason")
 
@@ -255,7 +259,7 @@ def test_post_implementation_review_uses_additional_context(run_hook: HookRunner
 
     assert output is not None
     assert output["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
-    assert "codex exec" in output["hookSpecificOutput"]["additionalContext"]
+    assert "mcp__codex__codex" in output["hookSpecificOutput"]["additionalContext"]
 
 
 def test_session_start_reminds_latest_changelog_heading(
@@ -297,7 +301,101 @@ def test_session_start_is_silent_without_changelog(
 
 
 # ---------------------------------------------------------------------------
-# log-codex-call — 호출 판별·thread_id 검증
+# codex-disable-plugins — mcp__codex__codex 호출을 읽기 전용·플러그인 차단으로 고정 (fail-closed)
+# ---------------------------------------------------------------------------
+
+
+def run_raw(
+    name: str, raw: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> tuple[int | None, str, str]:
+    """훅을 원문 stdin으로 실행해 (종료 코드, stdout, stderr)를 돌려준다."""
+    module = load_hook(name)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(raw))
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as excinfo:
+        module.main()
+    captured = capsys.readouterr()
+    code = excinfo.value.code
+    return (code if isinstance(code, int) else None), captured.out, captured.err
+
+
+CODEX_CALL = {
+    "session_id": "s1",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__codex__codex",
+    "tool_input": {"prompt": "이 diff를 검토해줘"},
+}
+
+
+def test_disable_plugins_forces_read_only_and_blocks_plugins(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, out, _ = run_raw("codex-disable-plugins", json.dumps(CODEX_CALL), monkeypatch, capsys)
+
+    assert code == 0
+    output = json.loads(out)
+    specific = output["hookSpecificOutput"]
+    assert specific["hookEventName"] == "PreToolUse"
+    updated = specific["updatedInput"]
+    assert updated["prompt"] == "이 diff를 검토해줘"
+    assert updated["sandbox"] == "read-only"
+    assert updated["approval-policy"] == "never"
+    assert updated["config"] == {
+        "features.plugins": False,
+        "mcp_servers.node_repl.enabled": False,
+    }
+    assert not find_key(output, "permissionDecision")
+
+
+def test_disable_plugins_overrides_write_sandbox_but_keeps_user_config(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    payload = {
+        **CODEX_CALL,
+        "tool_input": {
+            "prompt": "x",
+            "sandbox": "workspace-write",
+            "approval-policy": "on-request",
+            "config": {"model": "gpt-5", "features.plugins": True},
+        },
+    }
+
+    code, out, _ = run_raw("codex-disable-plugins", json.dumps(payload), monkeypatch, capsys)
+
+    assert code == 0
+    updated = json.loads(out)["hookSpecificOutput"]["updatedInput"]
+    assert updated["sandbox"] == "read-only"
+    assert updated["approval-policy"] == "never"
+    assert updated["config"]["model"] == "gpt-5"
+    assert updated["config"]["features.plugins"] is False
+    assert updated["config"]["mcp_servers.node_repl.enabled"] is False
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "",
+        "not json",
+        "[]",
+        "null",
+        json.dumps({"tool_input": "text"}),
+        json.dumps({"tool_input": None}),
+        json.dumps({**CODEX_CALL, "tool_input": {"prompt": "x", "config": "not-an-object"}}),
+        json.dumps({**CODEX_CALL, "tool_input": {"prompt": "x", "config": [1, 2]}}),
+    ],
+)
+def test_disable_plugins_fails_closed_on_unexpected_input(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], raw: str
+) -> None:
+    code, out, err = run_raw("codex-disable-plugins", raw, monkeypatch, capsys)
+
+    assert code == 2
+    assert out == ""
+    assert "codex-disable-plugins" in err
+
+
+# ---------------------------------------------------------------------------
+# log-codex-call — MCP 도구 호출 기록·threadId 검증
 # ---------------------------------------------------------------------------
 
 
@@ -306,72 +404,182 @@ def codex_log(hooklog: ModuleType) -> ModuleType:
     return load_hook("log-codex-call")
 
 
-@pytest.mark.parametrize(
-    "command",
-    [
-        "codex exec --json --sandbox read-only -",
-        "codex.cmd exec --json -",
-        "codex -c model=x exec --json -",
-        "CODEX_HOME=/tmp/x codex exec --json -",
-        "env FOO=1 codex exec --json -",
-        "timeout 300 codex exec --json -",
-        "timeout -s KILL 300 codex exec --json -",
-        "cd repo && codex exec --json -",
-        # heredoc 프롬프트 본문에 짝 없는 따옴표가 있어도 판별에 실패하지 않는다.
-        "codex exec --json --sandbox read-only - <<'CODEX_PROMPT'\ndon't break\nCODEX_PROMPT",
-    ],
-)
-def test_is_codex_exec_command_true(codex_log: ModuleType, command: str) -> None:
-    assert codex_log.is_codex_exec_command(command) is True
+def write_rollout(codex_home: Path, thread_id: str, *, window: int | None = 200_000) -> Path:
+    sessions = codex_home / "sessions" / "2026" / "09" / "26"
+    sessions.mkdir(parents=True)
+    info: dict[str, Any] = {
+        "total_token_usage": {"input_tokens": 1200, "output_tokens": 300, "total_tokens": 1500},
+        "last_token_usage": {"total_tokens": 900},
+    }
+    if window is not None:
+        info["model_context_window"] = window
+    lines = [
+        "plain text line",
+        json.dumps({"payload": {"type": "session_meta"}}),
+        json.dumps({"payload": {"type": "token_count", "info": {"total_token_usage": {}}}}),
+        json.dumps({"payload": {"type": "token_count", "info": info}}),
+        "null",
+    ]
+    path = sessions / f"rollout-2026-09-26T00-00-00-{thread_id}.jsonl"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
 
 
-@pytest.mark.parametrize(
-    "command",
-    [
-        'echo "codex exec"',
-        'rg "codex exec" .',
-        "codex login",
-        "ls -la",
-        "",
-    ],
-)
-def test_is_codex_exec_command_false(codex_log: ModuleType, command: str) -> None:
-    assert codex_log.is_codex_exec_command(command) is False
+def test_log_codex_call_pretooluse_logs_working(run_hook: HookRunner) -> None:
+    output, entries = run_hook("log-codex-call", CODEX_CALL)
+
+    assert output is None
+    assert len(entries) == 1
+    assert entries[0]["hook"] == "codex-invoke"
+    assert entries[0]["event"] == "PreToolUse"
+    assert entries[0]["agent"] == "codex-detective"
+    assert entries[0]["status"] == "working"
+    assert entries[0]["detail"] == "mcp__codex__codex"
 
 
-def test_strip_heredoc_bodies_keeps_command_line_and_text_after_terminator(
-    codex_log: ModuleType,
+def test_log_codex_call_posttooluse_logs_ok_with_usage_from_rollout(
+    run_hook: HookRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    command = "codex exec - <<'EOF' | tail -5\nsecret body\nEOF\necho done"
+    thread_id = "019a5f2c-1234-abcd"
+    write_rollout(tmp_path, thread_id)
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path))
+    payload = {
+        **CODEX_CALL,
+        "hook_event_name": "PostToolUse",
+        "tool_name": "mcp__codex__codex-reply",
+        "tool_input": {"prompt": "보안 관점에서 다시 봐줘", "threadId": thread_id},
+        "tool_response": {"threadId": thread_id, "content": "괜찮아 보인다"},
+    }
 
-    stripped = codex_log.strip_heredoc_bodies(command)
+    _, entries = run_hook("log-codex-call", payload)
 
-    assert "secret body" not in stripped
-    assert "tail -5" in stripped
-    assert "echo done" in stripped
+    assert entries[-1]["event"] == "PostToolUse"
+    assert entries[-1]["status"] == "ok"
+    assert entries[-1]["detail"] == "🛡️ 보안 중점 · mcp__codex__codex-reply"
+    assert entries[-1]["usage"] == {
+        "input": 1200,
+        "output": 300,
+        "total": 1500,
+        "context": 900,
+        "limit": 200_000,
+    }
 
 
-def test_extract_thread_id_accepts_single_hex_id(codex_log: ModuleType) -> None:
-    events = [{"type": "thread.started", "thread_id": "019a-ABCdef-0123"}]
-    assert codex_log.extract_thread_id(events) == "019a-ABCdef-0123"
+def test_log_codex_call_uses_fallback_limit_when_rollout_has_no_window(
+    codex_log: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_rollout(tmp_path, "abc123", window=None)
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path))
+
+    usage = codex_log.extract_usage("abc123")
+
+    assert usage is not None
+    assert usage["limit"] == codex_log.CONTEXT_LIMIT_FALLBACK
 
 
 @pytest.mark.parametrize(
-    "events",
+    ("event", "response"),
     [
+        ("PostToolUseFailure", {}),
+        ("PostToolUse", {"is_error": True}),
+    ],
+)
+def test_log_codex_call_logs_fail_on_failure_or_error(
+    run_hook: HookRunner, event: str, response: dict[str, Any]
+) -> None:
+    payload = {**CODEX_CALL, "hook_event_name": event, "tool_response": response}
+
+    _, entries = run_hook("log-codex-call", payload)
+
+    assert entries[-1]["event"] == event
+    assert entries[-1]["status"] == "fail"
+    assert entries[-1]["usage"] is None
+
+
+def test_log_codex_call_logs_fail_on_interrupt(run_hook: HookRunner) -> None:
+    payload = {**CODEX_CALL, "hook_event_name": "PostToolUse", "is_interrupt": True}
+
+    _, entries = run_hook("log-codex-call", payload)
+
+    assert entries[-1]["status"] == "fail"
+
+
+@pytest.mark.parametrize(
+    "tool_name", ["Bash", "Edit", "mcp__other__codex", "codex", "", "mcp_codex_codex"]
+)
+def test_log_codex_call_ignores_non_codex_tools(run_hook: HookRunner, tool_name: str) -> None:
+    payload = {**CODEX_CALL, "tool_name": tool_name}
+
+    output, entries = run_hook("log-codex-call", payload)
+
+    assert output is None
+    assert entries == []
+
+
+def test_classify_focus_prefers_security_over_perf(codex_log: ModuleType) -> None:
+    assert codex_log.classify_focus({"prompt": "성능도 보고 인증 로직도 봐줘"}) == "security"
+    assert codex_log.classify_focus({"prompt": "latency를 줄일 방법"}) == "perf"
+    assert codex_log.classify_focus({"prompt": "네이밍만 봐줘", "sandbox": "read-only"}) is None
+    assert codex_log.classify_focus({}) is None
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"threadId": "019a-ABCdef-0123", "content": "x"},
+        {"structuredContent": {"threadId": "019a-ABCdef-0123"}},
+        # Claude Code가 훅에 넘기는 실제 모양(2026-09-26 실측): JSON 문자열
+        '{"threadId":"019a-ABCdef-0123","content":"Sandbox mode: read-only"}',
+        # MCP content 블록 목록
+        [{"type": "text", "text": '{"threadId":"019a-ABCdef-0123","content":"x"}'}],
+    ],
+)
+def test_extract_thread_id_accepts_hex_id_in_every_response_shape(
+    codex_log: ModuleType, response: object
+) -> None:
+    assert codex_log.extract_thread_id(response) == "019a-ABCdef-0123"
+
+
+def test_log_codex_call_reads_usage_when_response_is_json_string(
+    run_hook: HookRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    thread_id = "01a0daf1-3e38-7573-825f-f2cd1bf717d4"
+    write_rollout(tmp_path, thread_id)
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path))
+    payload = {
+        **CODEX_CALL,
+        "hook_event_name": "PostToolUse",
+        "tool_response": json.dumps({"threadId": thread_id, "content": "OK"}),
+    }
+
+    _, entries = run_hook("log-codex-call", payload)
+
+    assert entries[-1]["status"] == "ok"
+    assert entries[-1]["usage"]["total"] == 1500
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {},
+        {"threadId": None},
+        {"threadId": ""},
+        {"threadId": 123},
+        {"threadId": "../../etc/*"},
+        {"threadId": "abc def"},
+        {"structuredContent": "text"},
+        "not json",
+        '"just a string"',
         [],
-        [
-            {"type": "thread.started", "thread_id": "aaaa"},
-            {"type": "thread.started", "thread_id": "bbbb"},
-        ],
-        [{"type": "thread.started", "thread_id": "../../etc/*"}],
-        [{"type": "thread.started", "thread_id": "abc def"}],
+        [{"type": "text", "text": "plain"}],
+        None,
+        5,
     ],
 )
-def test_extract_thread_id_rejects_ambiguous_or_unsafe_ids(
-    codex_log: ModuleType, events: list[dict[str, Any]]
+def test_extract_thread_id_rejects_missing_or_unsafe_ids(
+    codex_log: ModuleType, response: object
 ) -> None:
-    assert codex_log.extract_thread_id(events) is None
+    assert codex_log.extract_thread_id(response) is None
 
 
 def test_find_rollout_file_rejects_glob_metacharacters(
@@ -387,16 +595,25 @@ def test_find_rollout_file_rejects_glob_metacharacters(
     assert codex_log.find_rollout_file("../abc123") is None
 
 
-def test_iter_json_lines_ignores_non_dict_and_garbage(codex_log: ModuleType) -> None:
-    stdout = 'plain text\nnull\n[1, 2]\n{"type": "turn.completed"}\n\n'
+def test_log_codex_call_survives_unreadable_rollout(
+    run_hook: HookRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """rollout 파싱이 어떤 이유로든 실패해도 '호출이 끝났다'는 로그는 남는다."""
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "missing"))
+    payload = {
+        **CODEX_CALL,
+        "hook_event_name": "PostToolUse",
+        "tool_response": {"threadId": "abc123"},
+    }
 
-    events = codex_log._iter_json_lines(stdout)
+    _, entries = run_hook("log-codex-call", payload)
 
-    assert events == [{"type": "turn.completed"}]
+    assert entries[-1]["status"] == "ok"
+    assert entries[-1]["usage"] is None
 
 
 # ---------------------------------------------------------------------------
-# 리뷰 지적 회귀: session_id 경로 조작 / 객체가 아닌 JSON 입력 / env 옵션
+# 리뷰 지적 회귀: session_id 경로 조작 / 객체가 아닌 JSON 입력
 # ---------------------------------------------------------------------------
 
 
@@ -457,7 +674,13 @@ def test_hooks_survive_valid_json_that_is_not_an_object(
 
 @pytest.mark.parametrize("bad_tool_input", [[], "text", 5, None])
 @pytest.mark.parametrize(
-    "hook", ["check-codex-before-write", "post-implementation-review", "post-test-analysis"]
+    "hook",
+    [
+        "check-codex-before-write",
+        "post-implementation-review",
+        "post-test-analysis",
+        "log-codex-call",
+    ],
 )
 def test_hooks_survive_non_object_tool_input(
     hooklog: ModuleType,
@@ -468,7 +691,13 @@ def test_hooks_survive_non_object_tool_input(
 ) -> None:
     module = load_hook(hook)
     payload = json.dumps(
-        {"session_id": "s", "tool_input": bad_tool_input, "tool_response": bad_tool_input}
+        {
+            "session_id": "s",
+            "hook_event_name": "PostToolUse",
+            "tool_name": "mcp__codex__codex",
+            "tool_input": bad_tool_input,
+            "tool_response": bad_tool_input,
+        }
     )
     monkeypatch.setattr(sys, "stdin", io.StringIO(payload))
 
@@ -477,58 +706,3 @@ def test_hooks_survive_non_object_tool_input(
 
     assert excinfo.value.code in (0, None)
     assert capsys.readouterr().out == ""
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        "env -i CODEX_HOME=/tmp/x codex exec --json -",
-        "env -u OPENAI_API_KEY codex exec --json -",
-        "env --unset=FOO codex exec --json -",
-        "env -C /tmp codex exec --json -",
-        "env -- FOO=1 codex exec --json -",
-        "env -i -u A -u B FOO=1 timeout 60 codex exec --json -",
-    ],
-)
-def test_is_codex_exec_command_handles_env_options(codex_log: ModuleType, command: str) -> None:
-    assert codex_log.is_codex_exec_command(command) is True
-
-
-@pytest.mark.parametrize(
-    "command",
-    ["env -i FOO=1 ls", "env -u X python script.py", "env", "env -i"],
-)
-def test_env_prefix_without_codex_is_not_a_codex_call(codex_log: ModuleType, command: str) -> None:
-    assert codex_log.is_codex_exec_command(command) is False
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        "env -S 'codex exec --json -'",
-        "env --split-string='codex exec --json -'",
-        "env -i -S 'FOO=1 codex exec --json -'",
-        "env -a mycodex codex exec --json -",
-        "env --argv0=x codex exec --json -",
-    ],
-)
-def test_is_codex_exec_command_handles_env_split_string_and_argv0(
-    codex_log: ModuleType, command: str
-) -> None:
-    assert codex_log.is_codex_exec_command(command) is True
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        # -a의 값이 'codex'일 뿐 실제 실행 파일은 exec다 — Codex 호출이 아니다
-        "env -a codex exec --json",
-        "env -S 'ls -la'",
-        "env -S",
-        "env -S 'unterminated \"quote'",
-    ],
-)
-def test_is_codex_exec_command_env_edge_cases_are_not_codex_calls(
-    codex_log: ModuleType, command: str
-) -> None:
-    assert codex_log.is_codex_exec_command(command) is False

@@ -22,9 +22,9 @@ Claude Code와 Codex CLI가 서로 다른 규칙을 적용하면 리뷰/구현�
 
 ## 사용 시점
 
-- Codex가 `codex exec`로 새로 호출될 때마다, 위임 프롬프트에 포함된 맥락만으로 부족하면 위 파일들을
-  직접 읽어 보충한다.
-- `codex exec resume <thread_id>`로 같은 세션을 이어갈 때는 이미 로드한 컨텍스트를 다시 읽을 필요는 없다.
+- Codex가 MCP `codex` 도구(`mcp__codex__codex`)로 새로 호출될 때마다, 위임 프롬프트에 포함된 맥락만으로
+  부족하면 위 파일들을 직접 읽어 보충한다.
+- `mcp__codex__codex-reply`로 같은 세션을 이어갈 때는 이미 로드한 컨텍스트를 다시 읽을 필요는 없다.
 
 ## 주의
 

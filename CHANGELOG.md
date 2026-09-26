@@ -3,6 +3,45 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-09-26 (Codex 호출 경로를 MCP `codex`로 변경, `codex exec` 삭제)
+
+- **배경**: 워크스페이스 사용자 설정은 2026-09-22에 기본 경로를 Bash `codex exec`에서 MCP `codex`로
+  바꾸고 exec 경로·전용 훅을 삭제했다(토큰 실측 MCP 약 10.1k vs exec 약 15.0k). 템플릿은 이식형
+  문서라 그대로 뒀었는데, 사용자 요청으로 같은 구성을 템플릿에도 적용했다.
+- **`.mcp.json`**: Codex를 프로젝트 MCP 서버로 등록(`cmd /c npx -y @openai/codex@0.153.4 mcp-server`).
+  `codex mcp-server`는 0.154.0에서 삭제돼 마지막 지원 버전을 npx로 고정했다(전역 CLI 버전과 무관).
+  Windows용 `cmd /c` 형태이며 다른 OS 조정법은 README에 적었다.
+- **`codex-disable-plugins.py` 신설**(PreToolUse, matcher `mcp__codex__codex`, 사용자 설정
+  `codex_disable_plugins.py`와 같은 로직): MCP `codex`는 `sandbox` 생략 시 `workspace-write`로
+  열려 "리뷰 전담" 규칙과 충돌하므로 호출마다 `sandbox=read-only`·`approval-policy=never`와
+  `features.plugins=false`·`mcp_servers.node_repl.enabled=false` `config`를 덮어쓴다. 이상 입력·
+  예기치 못한 예외는 종료 코드 2로 호출을 막는다(fail-closed). `permissionDecision`은 내지 않는다.
+- **`log-codex-call.py`를 MCP 기준으로 재작성**: matcher `Bash`→`mcp__codex__.*`. 명령 문자열을
+  shlex로 파싱해 `codex exec`를 골라내던 판별 로직(heredoc·`env`·`timeout` 접두어 처리)과 stdout
+  JSONL 파싱을 삭제하고, `tool_name` 접두어로 판별·`tool_response.threadId`로 rollout 파일을 찾는다.
+  threadId 형식 검증(16진수·하이픈)과 rollout 비-dict 라인 방어는 유지했다.
+- **`settings.json`**: `log-codex-call.py`의 Bash 매처 3개를 `mcp__codex__.*`로 교체, `codex-disable-plugins.py`
+  등록(timeout 10초). `post-test-analysis.py`의 Bash 매처는 그대로다.
+- **테스트**: `codex exec` 판별 테스트 약 40건을 삭제하고 MCP 기록(Pre/Post/Failure/interrupt, rollout
+  사용량, 비-Codex 도구 무시, threadId 검증)과 `codex-disable-plugins`(강제 값 주입, 사용자 config
+  보존, fail-closed 8종) 테스트를 추가했다. ruff·mypy·pytest 통과.
+- **문서**: README·CLAUDE.md·AGENTS.md·`codex-delegation.md`·`codex-system`·`plan`·`startproject`·
+  `general-purpose`(tools에 MCP 도구 추가)·`.codex/skills/context-loader`·제안 훅 4개의 문구를 MCP
+  호출로 통일했다. 과거 날짜가 붙은 CHANGELOG 항목은 그 시점의 사실이라 고치지 않았다.
+- **더미 프로젝트 실호출 검증**: 템플릿을 임시 폴더에 복사해 `claude -p --strict-mcp-config
+  --mcp-config .mcp.json`으로 실제 호출했다. 일부러 `sandbox: workspace-write`를 넘겨도 Codex가
+  "read-only, approval never, plugins 0"으로 응답해 훅 강제가 확인됐고, `hooks.jsonl`에 working→ok와
+  토큰 사용량이 기록됐다. 이 과정에서 Claude Code가 MCP 결과를 훅에 **JSON 문자열**로 넘긴다는
+  것을 발견해 `log-codex-call.py`가 문자열·dict·content 블록 목록을 모두 파싱하도록 고쳤다
+  (처음 구현은 dict만 가정해 `usage`가 null이었다).
+- **비-MCP 잔재 삭제**: Codex CLI 동작 확인용이던 `sandbox/codex-test-project/`(자체 `.git` 포함)를
+  삭제하고 `.gitignore`·`pyproject.toml`의 sandbox 제외 설정을 걷어냈다. README의 전역 CLI 설치
+  안내(`npm install -g @openai/codex`)도 `npx -y @openai/codex@0.153.4 login`으로 바꿔, Codex 호출 경로가
+  MCP `codex` 하나뿐임을 README·CLAUDE.md에 명시했다.
+- **알려진 한계**: npm에서 `@openai/codex@0.153.4`가 내려가면 서버가 뜨지 않는다(그때는 임의 우회
+  대신 사용자에게 알린다). 훅 프로세스 자체가 못 뜨는 경우는 막을 수 없어 호출할 때도
+  `sandbox`·`approval-policy`를 직접 적는다.
+
 ## 2026-09-20 (제안 훅의 권한 우회 수정 + 훅 회귀 테스트 + 문서 정정)
 
 - **`check-codex-before-write.py` / `check-codex-after-plan.py`가 `permissionDecision: "allow"`를
