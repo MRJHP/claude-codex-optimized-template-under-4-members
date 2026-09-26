@@ -250,6 +250,74 @@ def test_log_event_defaults_status_from_triggered(hooklog: ModuleType) -> None:
 
 
 # ---------------------------------------------------------------------------
+# agent-router — 스킬 힌트 + 작업 유형별 에이전트(모델) 힌트
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("prompt", "agent", "model"),
+    [
+        ("src/auth 아래 파일 어디에 있어?", "explorer", "Haiku"),
+        ("현황 정리해서 보여줘", "explorer", "Haiku"),
+        ("로그인 버그 고쳐줘", "implementer", "Sonnet"),
+        # 조사와 구현이 섞이면 구현
+        ("설정 파일 찾아서 수정해줘", "implementer", "Sonnet"),
+        ("캐시 구조를 어떻게 설계할까?", "architect", "Opus"),
+        # 설계와 구현이 섞이면 설계
+        ("아키텍처 바꿔줘", "architect", "Opus"),
+        ("저장소 전부 점검해서 빠짐없이 확인해줘", "verifier", "Fable"),
+        # 검증과 설계가 섞이면 검증
+        ("설계 문서 전수 감사해줘", "verifier", "Fable"),
+    ],
+)
+def test_agent_router_suggests_agent_and_model_by_task_type(
+    run_hook: HookRunner, prompt: str, agent: str, model: str
+) -> None:
+    output, entries = run_hook("agent-router", {"session_id": "s1", "prompt": prompt})
+
+    assert output is not None
+    context = output["hookSpecificOutput"]["additionalContext"]
+    assert f"`{agent}`({model})" in context
+    assert "메인 세션 모델은 바뀌지 않" in context
+    assert not find_key(output, "permissionDecision")
+    assert f"{agent}({model})" in entries[-1]["detail"]
+
+
+def test_agent_router_emits_skill_and_agent_hints_together(run_hook: HookRunner) -> None:
+    output, entries = run_hook("agent-router", {"session_id": "s1", "prompt": "TDD로 버그 고쳐줘"})
+
+    assert output is not None
+    context = output["hookSpecificOutput"]["additionalContext"]
+    assert "tdd" in context
+    assert "`implementer`(Sonnet)" in context
+    assert entries[-1]["detail"] == "tdd, implementer(Sonnet)"
+
+
+def test_agent_router_is_silent_for_unrelated_prompt(run_hook: HookRunner) -> None:
+    output, entries = run_hook("agent-router", {"session_id": "s1", "prompt": "안녕"})
+
+    assert output is None
+    assert [e["triggered"] for e in entries] == [False]
+
+
+def test_agent_definitions_pin_models_per_rubric() -> None:
+    """작업 유형별 에이전트의 frontmatter model이 CLAUDE.md 표와 일치한다."""
+    agents_dir = HOOKS_DIR.parent / "agents"
+    expected = {
+        "explorer": "haiku",
+        "implementer": "sonnet",
+        "architect": "opus",
+        "verifier": "fable",
+        "pm": "sonnet",
+    }
+    for name, model in expected.items():
+        text = (agents_dir / f"{name}.md").read_text(encoding="utf-8")
+        frontmatter = text.split("---")[1]
+        assert f"\nmodel: {model}\n" in frontmatter, name
+        assert f"\nname: {name}\n" in frontmatter
+
+
+# ---------------------------------------------------------------------------
 # post-implementation-review / session-start-reminders
 # ---------------------------------------------------------------------------
 

@@ -31,7 +31,22 @@ VS Code 내장 터미널의 Claude Code CLI 환경에서는 볼드 소제목/섹
 
 ## Agent 모델 선택
 
-Agent 도구로 서브에이전트를 띄울 때, `subagent_type`이 `claude`(범용 catch-all)인 경우에만 작업 특성에 맞춰 `model` 파라미터(Haiku/Sonnet/Opus/Fable 중 선택)를 명시적으로 고른다(간단한 조회·파일 검색은 Haiku, 일반적인 구현 작업은 Sonnet, 설계·복잡한 판단이 필요한 작업은 Opus, 장시간 자율 세션·다단계 검증·착수 전 조사가 필요한 작업은 Fable — `.claude/skills/harness-lab/references/agent-design.md`의 Agent 모델 선택 루브릭과 동일 기준). `Explore`, `general-purpose`, `pm` 등 이미 정의된 전용 agent는 각자의 정의(`.claude/agents/`)에 맞는 모델이 있으므로 이 규칙을 적용하지 않고 `model`을 지정하지 않는다(정의된 기본값 사용). 메인 세션 자체의 모델(`/model`로 설정되는 값)은 이 규칙과 무관하며 자동으로 바뀌지 않는다.
+작업 특성에 따라 모델이 달라지는 지점은 **서브에이전트**다. 메인 세션 자체의 모델(`/model`로 설정되는 값)은 훅이나 규칙으로 자동 전환할 수 없으며, 사용자가 `/model`로 바꿀 때만 바뀐다.
+
+`.claude/agents/`에 작업 유형별로 모델이 고정된 전용 에이전트가 있다(기준은 `.claude/skills/harness-lab/references/agent-design.md`의 Agent 모델 선택 루브릭, 아래 표가 정본):
+
+| 작업 유형 | 에이전트 | 모델 | 도구 |
+|---|---|---|---|
+| 조사·검색·현황 파악(읽기만) | `explorer` | Haiku | Read, Grep, Glob |
+| 확립된 패턴 구현·버그 수정·게이트 실행 | `implementer` | Sonnet | + Edit, Write, Bash, Codex MCP |
+| 설계·상충 해소·리팩토링 계획·복잡한 원인 분석·깊은 리뷰 | `architect` | Opus | Read, Grep, Glob, Bash, Codex MCP |
+| 장시간 자율·전수 점검·다단계 검증·착수 전 조사 | `verifier` | Fable | Read, Grep, Glob, Bash, Write(자기 산출물만) |
+| 작업 분해·진행 추적 | `pm` | Sonnet | Read, Grep, Glob, Bash |
+| 그 밖의 범용 조사/실행 | `general-purpose` | 세션 상속 | Read, Grep, Glob, Bash, Web, Codex MCP |
+
+- `agent-router.py`(UserPromptSubmit 훅)가 입력에서 작업 유형을 추정해 어느 에이전트로 위임할지 힌트를 낸다. 강제가 아니라 제안이며, 위임할 크기가 아니면 무시한다.
+- 위 전용 에이전트를 쓸 때는 `model`을 따로 지정하지 않는다(정의된 값 사용). `subagent_type: "claude"`(범용 catch-all)로 띄울 때만 같은 루브릭으로 `model`을 명시한다.
+- 한 작업에 같은 모델을 일괄로 박지 않는다. 조사는 `explorer`, 구현은 `implementer`처럼 단계마다 나눠 위임한다.
 
 ## 지식 베이스
 
@@ -58,7 +73,7 @@ Claude가 상황을 보고 스스로 판단합니다.
 | Hook | 시점 | 역할 |
 |---|---|---|
 | session-start-reminders.py | 세션 시작 시 | `CHANGELOG.md` 최상단(가장 최근) 항목의 헤딩을 상기 (order-bridge/pc-manager/agent-visualizer-hub와 같은 패턴, `/init` 이후에도 그대로 유효) |
-| agent-router.py | 사용자 입력 시 | 입력 내용에서 어떤 스킬/작업 흐름이 적합한지 제안 |
+| agent-router.py | 사용자 입력 시 | 입력 내용에서 어떤 스킬이 적합한지, 위임한다면 어느 작업 유형·에이전트(모델)인지 제안 |
 | check-codex-before-write.py | 파일 편집 전 | 위험도가 높은 변경이면 Codex 상담 제안 |
 | check-codex-after-plan.py | 계획 확정 후 | Codex에게 계획 리뷰를 받을지 제안 |
 | post-implementation-review.py | 구현 후 | Codex 코드 리뷰 제안 |

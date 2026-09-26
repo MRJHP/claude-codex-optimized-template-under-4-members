@@ -3,6 +3,24 @@
 이 프로젝트에서 진행한 작업을 날짜순으로 기록한다. 커밋 메시지의 "무엇을"보다
 "왜 그렇게 결정했는지"를 남기는 데 초점을 둔다.
 
+## 2026-09-26 (2차: 작업 유형별 모델 고정 에이전트 + agent-router 모델 힌트)
+
+- **배경**: 사용자가 "특정 작업에 따라 모델이 변경되게" 요청. 2026-08-13 "Agent 모델 선택" 규칙이
+  같은 취지로 이미 있었지만(메인 세션 모델은 자동 전환 불가, 서브에이전트 `model`을 루브릭으로
+  고름) 매 호출마다 Claude 판단에 맡겨져 있고 자동화 장치가 없었다. 규칙 위에 장치를 얹는다.
+- **에이전트 4개 신설** (`.claude/agents/`, 루브릭 `harness-lab/references/agent-design.md` 기준):
+  `explorer`(Haiku, 읽기 전용 조사), `implementer`(Sonnet, 확립된 패턴 구현·게이트 실행·Codex
+  상담), `architect`(Opus, 설계·상충 해소·깊은 리뷰, 파일 수정 없음), `verifier`(Fable, 장시간
+  전수 점검·다단계 검증, `Write`는 자기 산출물만). `pm`에는 `model: sonnet`을 명시했다.
+  `general-purpose`는 세션 상속 그대로.
+- **`agent-router.py` 확장**: 스킬 힌트에 더해 입력에서 작업 유형을 추정해 "위임한다면 `explorer`
+  (Haiku) 권장"식 힌트를 낸다. 우선순위는 verifier > architect > implementer > explorer(깊은
+  추론이 필요한 쪽 우선, "찾아서 고쳐줘"는 구현). 메인 세션 모델은 바뀌지 않는다고 명시한다.
+  차단 없음·`additionalContext`만 출력이라는 기존 계약은 그대로다.
+- **CLAUDE.md "Agent 모델 선택"**을 에이전트 표(정본) 중심으로 다시 썼다.
+- **테스트**: 작업 유형 분류(우선순위 포함), 스킬·모델 힌트 동시 출력, 무관 입력 시 무출력을
+  `tests/test_hooks.py`에 추가했다.
+
 ## 2026-09-26 (Codex 호출 경로를 MCP `codex`로 변경, `codex exec` 삭제)
 
 - **배경**: 워크스페이스 사용자 설정은 2026-09-22에 기본 경로를 Bash `codex exec`에서 MCP `codex`로
